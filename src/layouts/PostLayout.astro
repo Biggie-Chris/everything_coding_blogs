@@ -44,6 +44,14 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   <article class="post" itemscope itemtype="https://schema.org/BlogPosting">
     <ReadingProgress />
 
+    {
+      tocHeadings.length > 0 && (
+        <aside class="post-toc-desktop">
+          <TableOfContents headings={tocHeadings} />
+        </aside>
+      )
+    }
+
     <header class="post-header">
       {post.data.draft && <div class="draft-badge">草稿</div>}
       <h1 class="post-title" itemprop="headline">{post.data.title}</h1>
@@ -63,27 +71,17 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
       }
     </header>
 
-    <div class="post-body">
+    <div class="post-content prose">
       {
         tocHeadings.length > 0 && (
-          <aside class="post-toc-desktop">
+          <details class="post-toc-mobile">
+            <summary>目录</summary>
             <TableOfContents headings={tocHeadings} />
-          </aside>
+          </details>
         )
       }
 
-      <div class="post-content prose">
-        {
-          tocHeadings.length > 0 && (
-            <details class="post-toc-mobile">
-              <summary>目录</summary>
-              <TableOfContents headings={tocHeadings} />
-            </details>
-          )
-        }
-
-        <Content />
-      </div>
+      <Content />
     </div>
 
     <footer class="post-footer">
@@ -107,12 +105,17 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
 <style>
   .post {
-    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--prose-width)) minmax(0, 1fr);
+    column-gap: 48px;
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-16);
   }
 
   .post-header {
-    max-width: var(--prose-width);
-    margin: 0 auto var(--space-8);
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: var(--space-8);
   }
 
   .draft-badge {
@@ -133,22 +136,17 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
     margin-bottom: var(--space-4);
   }
 
-  .post-body {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-8);
-    position: relative;
-  }
-
   .post-content {
-    width: 100%;
-    max-width: var(--prose-width);
+    grid-column: 2;
+    grid-row: 2;
     min-width: 0;
   }
 
   .post-toc-desktop {
-    width: 220px;
-    flex-shrink: 0;
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+    width: var(--toc-width);
     position: sticky;
     top: calc(var(--header-height) + var(--space-8));
     align-self: flex-start;
@@ -176,30 +174,32 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   }
 
   .post-footer {
-    max-width: var(--prose-width);
-    margin: var(--space-16) auto 0;
+    grid-column: 2;
+    grid-row: 3;
+    margin-top: var(--space-16);
   }
 
-  @media (max-width: 640px) {
-    .post-header,
-    .post-footer {
-      padding-left: var(--space-1);
-      padding-right: var(--space-1);
-    }
-
-    .post-content {
-      padding-left: var(--space-1);
-      padding-right: var(--space-1);
-    }
-  }
-
-  @media (max-width: 1024px) {
+  @media (max-width: 1200px) {
     .post-toc-desktop {
       display: none;
     }
 
     .post-toc-mobile {
       display: block;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .post {
+      grid-template-columns: 1fr;
+      padding-left: clamp(16px, 4vw, 32px);
+      padding-right: clamp(16px, 4vw, 32px);
+    }
+
+    .post-header,
+    .post-content,
+    .post-footer {
+      grid-column: 1;
     }
 
     .post-title {

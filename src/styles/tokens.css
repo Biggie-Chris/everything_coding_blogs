@@ -72,8 +72,9 @@
 
   /* Layout */
   --page-width: 1200px;
-  --prose-width: 740px;
-  --code-width: 820px;
+  --prose-width: 800px;
+  --code-width: 800px;
+  --toc-width: 240px;
   --header-height: 3.5rem;
 
   /* Borders */
