@@ -7,4 +7,3 @@ dist/
 .cache/
 pagefind/
 .claude/
-pnpm-workspace.yaml
