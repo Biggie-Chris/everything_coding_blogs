@@ -30,6 +30,9 @@
     "sharp": "^0.35.3"
   },
   "packageManager": "pnpm@11.12.0",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
+  },
   "engines": {
     "node": ">=20.0.0"
   }
