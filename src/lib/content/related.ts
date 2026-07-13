@@ -1,0 +1,1 @@
+export { getRelatedPosts } from "./posts";

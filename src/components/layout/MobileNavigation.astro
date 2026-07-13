@@ -1,0 +1,161 @@
+---
+import { headerNav } from "@config/navigation";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
+---
+
+<button
+  id="mobile-menu-btn"
+  class="mobile-menu-btn"
+  type="button"
+  aria-label="打开菜单"
+  aria-expanded="false"
+>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    aria-hidden="true"
+  >
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+</button>
+
+<dialog id="mobile-dialog" class="mobile-dialog">
+  <div class="mobile-dialog-content">
+    <button id="mobile-close-btn" class="mobile-close-btn" type="button" aria-label="关闭菜单">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <nav class="mobile-nav" aria-label="移动端导航">
+      {
+        headerNav.map((item) => (
+          <a href={base + item.href} class="mobile-nav-link">
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</dialog>
+
+<script>
+  const btn = document.getElementById("mobile-menu-btn");
+  const dialog = document.getElementById("mobile-dialog") as HTMLDialogElement | null;
+  const closeBtn = document.getElementById("mobile-close-btn");
+
+  btn?.addEventListener("click", () => {
+    dialog?.showModal();
+    btn.setAttribute("aria-expanded", "true");
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    dialog?.close();
+    btn?.setAttribute("aria-expanded", "false");
+  });
+
+  dialog?.addEventListener("click", (e) => {
+    if (e.target === dialog) {
+      dialog.close();
+      btn?.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  dialog?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      dialog.close();
+      btn?.setAttribute("aria-expanded", "false");
+    });
+  });
+</script>
+
+<style>
+  .mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .mobile-menu-btn:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-dialog {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
+    max-width: 90vw;
+    width: 320px;
+  }
+
+  .mobile-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .mobile-dialog-content {
+    padding: var(--space-6);
+  }
+
+  .mobile-close-btn {
+    display: block;
+    margin-left: auto;
+    margin-bottom: var(--space-4);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+  }
+
+  .mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .mobile-nav-link {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+  }
+
+  .mobile-nav-link:hover {
+    background: var(--color-surface);
+  }
+
+  @media (max-width: 768px) {
+    .mobile-menu-btn {
+      display: flex;
+    }
+  }
+</style>

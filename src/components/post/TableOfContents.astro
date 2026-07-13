@@ -1,0 +1,116 @@
+---
+export interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+export interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+---
+
+<nav class="toc" aria-label="目录">
+  <div class="toc-title">目录</div>
+  <ul class="toc-list">
+    {
+      headings.map((h) => (
+        <li class:list={["toc-item", `toc-depth-${h.depth}`]}>
+          <a href={`#${h.slug}`} class="toc-link">
+            {h.text}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  function initToc() {
+    const links = document.querySelectorAll(".toc-link");
+    if (links.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const link = document.querySelector(`.toc-link[href="#${entry.target.id}"]`);
+          if (link) {
+            link.classList.toggle("toc-active", entry.isIntersecting);
+          }
+        });
+      },
+      { rootMargin: "-80px 0px -80% 0px" },
+    );
+
+    links.forEach((link) => {
+      const href = link.getAttribute("href");
+      if (!href) return;
+      const id = href.replace("#", "");
+      const target = document.getElementById(id);
+      if (target) observer.observe(target);
+    });
+  }
+
+  initToc();
+  document.addEventListener("astro:page-load", initToc);
+</script>
+
+<style>
+  .toc {
+    font-size: var(--font-size-sm);
+  }
+
+  .toc-title {
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: var(--font-size-xs);
+  }
+
+  .toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .toc-item {
+    list-style: none;
+  }
+
+  .toc-depth-3 {
+    padding-left: var(--space-4);
+  }
+
+  .toc-link {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    transition:
+      color var(--transition-fast),
+      background var(--transition-fast);
+    border-left: 2px solid transparent;
+    line-height: var(--line-height-normal);
+  }
+
+  .toc-link:hover {
+    color: var(--color-text);
+    background: var(--color-surface);
+  }
+
+  .toc-link.toc-active {
+    color: var(--color-accent);
+    border-left-color: var(--color-accent);
+    background: var(--color-note-bg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toc-link {
+      transition: none;
+    }
+  }
+</style>

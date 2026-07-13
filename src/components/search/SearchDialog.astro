@@ -1,0 +1,182 @@
+---
+import { features } from "@config/features";
+---
+
+{
+  features.search && (
+    <div class="search-container" id="search-container">
+      <dialog id="search-dialog" class="search-dialog" role="dialog" aria-label="搜索文章">
+        <div class="search-inner">
+          <div class="search-input-wrap">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              class="search-icon"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="search"
+              id="search-input"
+              class="search-input"
+              placeholder="搜索文章..."
+              autocomplete="off"
+            />
+          </div>
+          <div
+            id="search-results"
+            class="search-results"
+            role="region"
+            aria-live="polite"
+            aria-label="搜索结果"
+          >
+            <p class="search-hint">输入关键词开始搜索</p>
+          </div>
+          <div class="search-footer">
+            <span>
+              <kbd>↑</kbd> <kbd>↓</kbd> 选择
+            </span>
+            <span>
+              <kbd>Enter</kbd> 打开
+            </span>
+            <span>
+              <kbd>Esc</kbd> 关闭
+            </span>
+          </div>
+        </div>
+      </dialog>
+    </div>
+  )
+}
+
+<style>
+  .search-dialog {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-lg);
+    max-width: 560px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow: hidden;
+  }
+
+  .search-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .search-inner {
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+  }
+
+  .search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .search-icon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    border: none;
+    background: none;
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    outline: none;
+  }
+
+  .search-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-2);
+    min-height: 120px;
+    max-height: 400px;
+  }
+
+  .search-hint,
+  .search-loading,
+  .search-empty,
+  .search-error {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-8);
+    font-size: var(--font-size-sm);
+  }
+
+  .search-result-item {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: background var(--transition-fast);
+    border: 1px solid transparent;
+  }
+
+  .search-result-item:hover,
+  .search-result-item.selected {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+  }
+
+  .search-result-title {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    margin-bottom: var(--space-1);
+  }
+
+  .search-result-excerpt {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    line-height: var(--line-height-normal);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .search-result-tags {
+    margin-top: var(--space-1);
+    font-size: var(--font-size-xs);
+    color: var(--color-tag-text);
+  }
+
+  .search-footer {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-6);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border-light);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .search-footer kbd {
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+</style>

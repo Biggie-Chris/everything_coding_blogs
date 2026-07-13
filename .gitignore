@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.env
+.DS_Store
+*.log
+.cache/
+pagefind/
+.claude/
+pnpm-workspace.yaml

@@ -1,0 +1,26 @@
+---
+import PageLayout from "@layouts/PageLayout.astro";
+import PostList from "@components/post/PostList.astro";
+import { getPublishedPosts } from "@lib/content/posts";
+
+const posts = await getPublishedPosts();
+---
+
+<PageLayout meta={{ title: "文章" }}>
+  <h1 class="posts-title">文章</h1>
+  <p class="posts-count">共 {posts.length} 篇文章</p>
+  <PostList posts={posts} />
+</PageLayout>
+
+<style>
+  .posts-title {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-2);
+  }
+
+  .posts-count {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-8);
+  }
+</style>

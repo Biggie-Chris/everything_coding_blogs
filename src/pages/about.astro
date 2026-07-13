@@ -1,0 +1,38 @@
+---
+import { site } from "@config/site";
+import PageLayout from "@layouts/PageLayout.astro";
+---
+
+<PageLayout meta={{ title: "关于" }}>
+  <article class="about prose">
+    <h1>关于</h1>
+
+    <p>我是 {site.author}，一名专注于 Linux 系统编程和高性能网络的技术工程师。</p>
+
+    <h2>技术方向</h2>
+    <ul>
+      <li>Linux 内核网络栈：epoll、io_uring、XDP、eBPF</li>
+      <li>高性能网络：RDMA、DPDK、SPDK</li>
+      <li>AI Infra：高性能训练和推理基础设施</li>
+      <li>系统编程：C/C++、Rust</li>
+      <li>分布式系统</li>
+      <li>系统性能分析与优化</li>
+    </ul>
+
+    <h2>关于本博客</h2>
+    <p>
+      这个博客记录我在上述领域的学习笔记、实践经验和思考。文章力求深入技术细节，提供可复现的代码示例和清晰的架构图。
+    </p>
+
+    <h2>联系方式</h2>
+    <p>
+      欢迎通过 <a href={site.githubUrl} rel="noopener noreferrer">GitHub</a> 交流技术问题。
+    </p>
+  </article>
+</PageLayout>
+
+<style>
+  .about {
+    padding-top: var(--space-8);
+  }
+</style>

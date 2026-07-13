@@ -1,0 +1,123 @@
+---
+import type { Post } from "@lib/content/posts";
+import { postUrl } from "@lib/urls";
+
+export interface Props {
+  prev: Post | null;
+  next: Post | null;
+  seriesPosts: Post[] | null;
+  currentSlug: string;
+}
+
+const { prev, next, seriesPosts, currentSlug } = Astro.props;
+
+const seriesPrev = seriesPosts
+  ? (() => {
+      const idx = seriesPosts.findIndex((p) => p.id === currentSlug);
+      return idx > 0 ? seriesPosts[idx - 1]! : null;
+    })()
+  : null;
+
+const seriesNext = seriesPosts
+  ? (() => {
+      const idx = seriesPosts.findIndex((p) => p.id === currentSlug);
+      return idx < seriesPosts.length - 1 && idx !== -1 ? seriesPosts[idx + 1]! : null;
+    })()
+  : null;
+---
+
+<nav class="prev-next" aria-label="文章导航">
+  {
+    prev ? (
+      <a href={postUrl(prev.id)} class="prev-next-link prev-link" rel="prev">
+        <span class="prev-next-label">← 上一篇</span>
+        <span class="prev-next-title">{prev.data.title}</span>
+      </a>
+    ) : (
+      <div />
+    )
+  }
+
+  {
+    next ? (
+      <a href={postUrl(next.id)} class="prev-next-link next-link" rel="next">
+        <span class="prev-next-label">下一篇 →</span>
+        <span class="prev-next-title">{next.data.title}</span>
+      </a>
+    ) : (
+      <div />
+    )
+  }
+</nav>
+
+{
+  seriesPrev && (
+    <div class="series-prev-next">
+      <a href={postUrl(seriesPrev.id)} class="series-nav-link series-prev" rel="prev">
+        ← 上一篇：{seriesPrev.data.title}
+      </a>
+    </div>
+  )
+}
+
+{
+  seriesNext && (
+    <div class="series-next-prev">
+      <a href={postUrl(seriesNext.id)} class="series-nav-link series-next" rel="next">
+        → 下一篇：{seriesNext.data.title}
+      </a>
+    </div>
+  )
+}
+
+<style>
+  .prev-next {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    margin-top: var(--space-12);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border-light);
+  }
+
+  .prev-next-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    transition: background var(--transition-fast);
+  }
+
+  .prev-next-link:hover {
+    background: var(--color-surface-raised);
+  }
+
+  .next-link {
+    text-align: right;
+  }
+
+  .prev-next-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .prev-next-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  @media (max-width: 640px) {
+    .prev-next {
+      grid-template-columns: 1fr;
+    }
+
+    .next-link {
+      text-align: left;
+    }
+  }
+</style>

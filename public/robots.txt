@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://biggie-chris.github.io/everything_coding_blogs/sitemap-index.xml

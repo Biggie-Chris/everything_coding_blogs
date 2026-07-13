@@ -1,0 +1,36 @@
+{
+  "name": "tech-blog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Linux 高性能网络、RDMA、AI Infra 与系统编程",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build && pagefind --site dist",
+    "preview": "astro preview",
+    "check": "astro check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "rm -rf dist .astro node_modules/.cache"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "prettier": "^3.5.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.2.2",
+    "@astrojs/rss": "^4.0.11",
+    "@astrojs/sitemap": "^3.2.1",
+    "astro": "^5.5.5",
+    "astro-expressive-code": "^0.40.2",
+    "pagefind": "^1.3.0",
+    "sharp": "^0.35.3"
+  },
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

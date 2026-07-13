@@ -1,0 +1,80 @@
+---
+import { features } from "@config/features";
+---
+
+{
+  features.search && (
+    <button
+      id="search-btn"
+      class="search-btn"
+      type="button"
+      aria-label="搜索文章 (Ctrl+K)"
+      title="搜索文章 (Ctrl+K)"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <span class="search-btn-text">搜索</span>
+      <kbd class="search-btn-kbd">Ctrl+K</kbd>
+    </button>
+  )
+}
+
+<style>
+  .search-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .search-btn:hover {
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .search-btn:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .search-btn-text {
+    display: inline;
+  }
+
+  .search-btn-kbd {
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-light);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 640px) {
+    .search-btn-text,
+    .search-btn-kbd {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,25 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import type { SeoMeta } from "@lib/seo/metadata";
+
+export interface Props {
+  meta: SeoMeta;
+  noHeader?: boolean;
+  noFooter?: boolean;
+}
+
+const { meta, noHeader, noFooter } = Astro.props;
+---
+
+<BaseLayout meta={meta} noHeader={noHeader} noFooter={noFooter}>
+  <div class="page container">
+    <slot />
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-16);
+  }
+</style>

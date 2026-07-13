@@ -1,0 +1,74 @@
+---
+import PageLayout from "@layouts/PageLayout.astro";
+import { getAllTags } from "@lib/content/tags";
+import { tagUrl } from "@lib/urls";
+
+const tags = await getAllTags();
+---
+
+<PageLayout meta={{ title: "标签" }}>
+  <h1 class="tags-title">标签</h1>
+
+  {
+    tags.length > 0 ? (
+      <div class="tags-grid">
+        {tags.map((t) => (
+          <a href={tagUrl(t.name)} class="tag-card">
+            <span class="tag-card-name">{t.name}</span>
+            <span class="tag-card-count">{t.count} 篇文章</span>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <p class="empty">暂无标签</p>
+    )
+  }
+</PageLayout>
+
+<style>
+  .tags-title {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-8);
+  }
+
+  .tags-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .tag-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .tag-card:hover {
+    background: var(--color-surface-raised);
+    border-color: var(--color-accent);
+  }
+
+  .tag-card-name {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .tag-card-count {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-12);
+  }
+</style>

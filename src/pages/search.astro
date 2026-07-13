@@ -1,0 +1,107 @@
+---
+import PageLayout from "@layouts/PageLayout.astro";
+---
+
+<PageLayout meta={{ title: "搜索" }}>
+  <h1 class="search-page-title">搜索</h1>
+  <p class="search-page-hint">
+    按 <kbd>Ctrl+K</kbd> 或 <kbd>/</kbd> 打开搜索，或使用下方搜索框。
+  </p>
+
+  <div class="search-page-box">
+    <input
+      type="search"
+      id="search-page-input"
+      class="search-page-input"
+      placeholder="搜索文章标题、描述、正文..."
+      autocomplete="off"
+    />
+    <div id="search-page-results" class="search-page-results" role="region" aria-live="polite">
+      <p class="search-page-empty">输入关键词开始搜索</p>
+    </div>
+  </div>
+</PageLayout>
+
+<style>
+  .search-page-title {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-4);
+  }
+
+  .search-page-hint {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-8);
+    font-size: var(--font-size-sm);
+  }
+
+  .search-page-hint kbd {
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .search-page-box {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .search-page-input {
+    width: 100%;
+    padding: var(--space-4) var(--space-5);
+    border: none;
+    border-bottom: 1px solid var(--color-border-light);
+    background: var(--color-bg);
+    font-size: var(--font-size-lg);
+    color: var(--color-text);
+    outline: none;
+  }
+
+  .search-page-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .search-page-results {
+    min-height: 120px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .search-page-empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-8);
+    font-size: var(--font-size-sm);
+  }
+
+  .search-page-item {
+    display: block;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background var(--transition-fast);
+  }
+
+  .search-page-item:last-child {
+    border-bottom: none;
+  }
+
+  .search-page-item:hover {
+    background: var(--color-surface);
+  }
+
+  .search-page-item-title {
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    margin-bottom: var(--space-1);
+  }
+
+  .search-page-item-excerpt {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    line-height: var(--line-height-normal);
+  }
+</style>

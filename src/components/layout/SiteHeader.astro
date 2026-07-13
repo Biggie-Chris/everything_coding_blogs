@@ -1,0 +1,106 @@
+---
+import { site } from "@config/site";
+import { headerNav } from "@config/navigation";
+import ThemeToggle from "./ThemeToggle.astro";
+import MobileNavigation from "./MobileNavigation.astro";
+import SearchButton from "@components/search/SearchButton.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
+---
+
+<header class="site-header">
+  <div class="header-inner container">
+    <a href={base || "/"} class="site-logo" aria-label="首页">
+      {site.name}
+    </a>
+
+    <nav class="header-nav" aria-label="主导航">
+      {
+        headerNav.map((item) => (
+          <a
+            href={base + item.href}
+            class="nav-link"
+            aria-current={Astro.url.pathname.startsWith(item.href) ? "page" : undefined}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="header-actions">
+      <SearchButton />
+      <ThemeToggle />
+      <MobileNavigation />
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border-light);
+    height: var(--header-height);
+    transition: background var(--transition-normal);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .site-logo {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .site-logo:hover {
+    color: var(--color-accent);
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .nav-link {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .nav-link:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .nav-link[aria-current="page"] {
+    color: var(--color-accent);
+    background: var(--color-note-bg);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  @media (max-width: 768px) {
+    .header-nav {
+      display: none;
+    }
+  }
+</style>

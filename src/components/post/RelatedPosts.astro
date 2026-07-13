@@ -1,0 +1,42 @@
+---
+import { getRelatedPosts, type Post } from "@lib/content/posts";
+import PostCard from "./PostCard.astro";
+
+export interface Props {
+  post: Post;
+}
+
+const related = await getRelatedPosts(Astro.props.post);
+---
+
+{
+  related.length > 0 && (
+    <section class="related-posts" aria-label="相关文章">
+      <h2 class="related-heading">相关文章</h2>
+      <div class="related-grid">
+        {related.map((p) => (
+          <PostCard post={p} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .related-posts {
+    margin-top: var(--space-12);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border-light);
+  }
+
+  .related-heading {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-6);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+</style>

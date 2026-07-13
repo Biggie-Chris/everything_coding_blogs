@@ -1,0 +1,89 @@
+---
+import { seriesUrl, postUrl } from "@lib/urls";
+import type { SeriesInfo } from "@lib/content/series";
+
+export interface Props {
+  series: SeriesInfo;
+  currentSlug: string;
+  position: { current: number; total: number };
+}
+
+const { series, currentSlug } = Astro.props;
+---
+
+<nav class="post-series" aria-label="系列文章">
+  <div class="series-header">
+    <a href={seriesUrl(series.name)} class="series-title">
+      {series.name}
+    </a>
+    <span class="series-progress">
+      第 {Astro.props.position.current} 篇，共 {Astro.props.position.total} 篇
+    </span>
+  </div>
+
+  <ol class="series-list">
+    {
+      series.posts.map((p) => (
+        <li class:list={["series-item", { "series-item-current": p.id === currentSlug }]}>
+          {p.id === currentSlug ? (
+            <span class="series-link-current">{p.data.title}</span>
+          ) : (
+            <a href={postUrl(p.id)} class="series-link">
+              {p.data.title}
+            </a>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .post-series {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    background: var(--color-series-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-series-text);
+    border-color: var(--color-series-text);
+    opacity: 0.85;
+  }
+
+  .series-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .series-title {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--color-series-text);
+  }
+
+  .series-progress {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .series-list {
+    list-style: decimal;
+    padding-left: var(--space-6);
+    font-size: var(--font-size-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .series-link {
+    color: var(--color-link);
+  }
+
+  .series-link-current {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+</style>

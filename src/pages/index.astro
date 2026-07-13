@@ -1,0 +1,253 @@
+---
+import { site } from "@config/site";
+import BaseLayout from "@layouts/BaseLayout.astro";
+import PostList from "@components/post/PostList.astro";
+import { getPublishedPosts, getFeaturedPosts } from "@lib/content/posts";
+import { getAllTags } from "@lib/content/tags";
+import { getAllSeries } from "@lib/content/series";
+import { tagUrl, seriesUrl } from "@lib/urls";
+import { websiteSchema, personSchema, buildStructuredData } from "@lib/seo/structured-data";
+
+const posts = await getPublishedPosts();
+const featured = await getFeaturedPosts();
+const tags = await getAllTags();
+const seriesList = await getAllSeries();
+const latestPosts = posts.slice(0, 6);
+
+const jsonLd = buildStructuredData([
+  { "@id": `${site.siteUrl}/#person`, ...personSchema() },
+  websiteSchema(),
+]);
+---
+
+<BaseLayout
+  meta={{
+    title: site.title,
+    description: site.description,
+  }}
+>
+  <div class="home container">
+    <!-- Hero -->
+    <section class="hero">
+      <h1 class="hero-title">{site.title}</h1>
+      <p class="hero-desc">{site.description}</p>
+      <div class="hero-links">
+        <a href={site.githubUrl} class="hero-link" rel="noopener noreferrer">GitHub</a>
+        <a href="/rss.xml" class="hero-link">RSS</a>
+      </div>
+    </section>
+
+    <!-- Featured -->
+    {
+      featured.length > 0 && (
+        <section class="section">
+          <h2 class="section-title">精选文章</h2>
+          <PostList posts={featured} />
+        </section>
+      )
+    }
+
+    <!-- Latest -->
+    <section class="section">
+      <h2 class="section-title">
+        最新文章
+        <a href="/posts/" class="section-more">查看全部 →</a>
+      </h2>
+      <PostList posts={latestPosts} />
+    </section>
+
+    <!-- Index -->
+    <div class="index-grid">
+      <!-- Tags -->
+      {
+        tags.length > 0 && (
+          <section class="section">
+            <h2 class="section-title">
+              标签
+              <a href="/tags/" class="section-more">
+                全部 →
+              </a>
+            </h2>
+            <div class="tag-cloud">
+              {tags.slice(0, 20).map((t) => (
+                <a href={tagUrl(t.name)} class="tag-item">
+                  {t.name}
+                  <span class="tag-count">{t.count}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      <!-- Series -->
+      {
+        seriesList.length > 0 && (
+          <section class="section">
+            <h2 class="section-title">
+              系列
+              <a href="/series/" class="section-more">
+                全部 →
+              </a>
+            </h2>
+            <div class="series-list-mini">
+              {seriesList.map((s) => (
+                <a href={seriesUrl(s.name)} class="series-item-mini">
+                  <span class="series-name">{s.name}</span>
+                  <span class="series-count">{s.count} 篇</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={jsonLd} is:inline />
+</BaseLayout>
+
+<style>
+  .home {
+    padding-top: var(--space-12);
+    padding-bottom: var(--space-16);
+  }
+
+  .hero {
+    max-width: var(--prose-width);
+    margin: 0 auto var(--space-16);
+  }
+
+  .hero-title {
+    font-size: var(--font-size-4xl);
+    margin-bottom: var(--space-4);
+  }
+
+  .hero-desc {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--space-6);
+  }
+
+  .hero-links {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .hero-link {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    border: 1px solid var(--color-border-light);
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .hero-link:hover {
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+  }
+
+  .section {
+    margin-bottom: var(--space-16);
+  }
+
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-6);
+  }
+
+  .section-more {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .section-more:hover {
+    color: var(--color-accent);
+  }
+
+  .index-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-16);
+  }
+
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .tag-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-tag-bg);
+    color: var(--color-tag-text);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    transition: filter var(--transition-fast);
+  }
+
+  .tag-item:hover {
+    filter: brightness(0.95);
+    color: var(--color-tag-text);
+  }
+
+  .tag-count {
+    font-size: var(--font-size-xs);
+    opacity: 0.7;
+  }
+
+  .series-list-mini {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .series-item-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-light);
+    transition: background var(--transition-fast);
+  }
+
+  .series-item-mini:hover {
+    background: var(--color-surface-raised);
+  }
+
+  .series-name {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+  }
+
+  .series-count {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 768px) {
+    .index-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+      font-size: var(--font-size-3xl);
+    }
+  }
+</style>

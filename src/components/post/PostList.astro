@@ -1,0 +1,43 @@
+---
+import type { Post } from "@lib/content/posts";
+import PostCard from "./PostCard.astro";
+
+export interface Props {
+  posts: Post[];
+  emptyMessage?: string;
+}
+
+const { posts, emptyMessage = "暂无文章" } = Astro.props;
+---
+
+{
+  posts.length > 0 ? (
+    <div class="post-grid">
+      {posts.map((post) => (
+        <PostCard post={post} />
+      ))}
+    </div>
+  ) : (
+    <p class="empty">{emptyMessage}</p>
+  )
+}
+
+<style>
+  .post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-6);
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-12) 0;
+  }
+
+  @media (max-width: 640px) {
+    .post-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

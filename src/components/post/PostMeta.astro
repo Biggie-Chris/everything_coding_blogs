@@ -1,0 +1,50 @@
+---
+import { formatDate, isUpdatedRecently } from "@lib/dates";
+
+export interface Props {
+  pubDate: Date;
+  updatedDate?: Date;
+  readingTime: number;
+}
+
+const { pubDate, updatedDate, readingTime } = Astro.props;
+const showUpdated = isUpdatedRecently(pubDate, updatedDate);
+---
+
+<div class="post-meta">
+  <time datetime={pubDate.toISOString()} itemprop="datePublished">
+    {formatDate(pubDate)}
+  </time>
+
+  {
+    showUpdated && updatedDate && (
+      <time datetime={updatedDate.toISOString()} class="post-updated" itemprop="dateModified">
+        更新于 {formatDate(updatedDate)}
+      </time>
+    )
+  }
+
+  <span class="post-reading-time">{readingTime} 分钟阅读</span>
+</div>
+
+<style>
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    margin-top: var(--space-3);
+  }
+
+  .post-updated {
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+
+  .post-reading-time::before {
+    content: "·";
+    margin-right: var(--space-3);
+  }
+</style>

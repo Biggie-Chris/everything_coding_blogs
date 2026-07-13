@@ -1,0 +1,33 @@
+---
+import { getCollection } from "astro:content";
+import PostLayout from "@layouts/PostLayout.astro";
+import { getPostWithPrevNext } from "@lib/content/posts";
+import { contentSlug } from "@lib/urls";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("blog");
+  return entries
+    .filter((entry) => {
+      if (import.meta.env.PROD && entry.data.draft) return false;
+      return true;
+    })
+    .map((entry) => ({
+      params: { id: contentSlug(entry.id) },
+      props: { entryId: entry.id },
+    }));
+}
+
+const { entryId } = Astro.props;
+
+const result = await getPostWithPrevNext(entryId);
+
+if (!result) {
+  return Astro.redirect("/404/");
+}
+
+const { post, prev, next } = result;
+const headings = post.render().then((r) => r.headings ?? []);
+const resolvedHeadings = await headings;
+---
+
+<PostLayout post={post} prev={prev} next={next} headings={resolvedHeadings} />

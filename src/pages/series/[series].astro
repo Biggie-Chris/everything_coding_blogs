@@ -1,0 +1,47 @@
+---
+import PageLayout from "@layouts/PageLayout.astro";
+import PostList from "@components/post/PostList.astro";
+import { getAllSeries } from "@lib/content/series";
+import { tagSlug } from "@lib/urls";
+
+export async function getStaticPaths() {
+  const all = await getAllSeries();
+  return all.map((s) => ({ params: { series: tagSlug(s.name) }, props: { seriesName: s.name } }));
+}
+
+const { seriesName } = Astro.props;
+const all = await getAllSeries();
+const series = all.find((s) => s.name === seriesName);
+const posts = series?.posts ?? [];
+---
+
+<PageLayout
+  meta={{
+    title: `系列: ${seriesName}`,
+    description: `${seriesName} 系列文章 (${posts.length} 篇)`,
+  }}
+>
+  <h1 class="series-page-title">
+    系列：<span class="series-page-name">{seriesName}</span>
+  </h1>
+  <p class="series-page-count">共 {posts.length} 篇文章</p>
+
+  <PostList posts={posts} emptyMessage="暂无文章" />
+</PageLayout>
+
+<style>
+  .series-page-title {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-2);
+  }
+
+  .series-page-name {
+    color: var(--color-accent);
+  }
+
+  .series-page-count {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-8);
+  }
+</style>

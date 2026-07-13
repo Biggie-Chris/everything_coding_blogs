@@ -1,0 +1,42 @@
+---
+import { site } from "@config/site";
+import SeoHead from "@components/seo/SeoHead.astro";
+import SiteHeader from "@components/layout/SiteHeader.astro";
+import SiteFooter from "@components/layout/SiteFooter.astro";
+import SearchDialog from "@components/search/SearchDialog.astro";
+import type { SeoMeta } from "@lib/seo/metadata";
+
+export interface Props {
+  meta: SeoMeta;
+  noHeader?: boolean;
+  noFooter?: boolean;
+}
+
+const { meta, noHeader = false, noFooter = false } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
+---
+
+<!doctype html>
+<html lang={site.language} data-theme>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+    <link rel="manifest" href={`${base}/site.webmanifest`} />
+    <SeoHead meta={meta} />
+  </head>
+  <body>
+    <a href="#main-content" class="skip-to-content">跳转到主要内容</a>
+    {!noHeader && <SiteHeader />}
+    <main id="main-content">
+      <slot />
+    </main>
+    {!noFooter && <SiteFooter />}
+    <SearchDialog />
+    <script src={`${base}/js/search.js`} defer is:inline></script>
+  </body>
+</html>
+
+<style is:global>
+  @import "../styles/global.css";
+</style>

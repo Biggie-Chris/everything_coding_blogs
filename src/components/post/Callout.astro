@@ -1,0 +1,88 @@
+---
+export interface Props {
+  type?: "note" | "tip" | "warning" | "danger";
+}
+
+const { type = "note" } = Astro.props;
+
+const labels: Record<string, string> = {
+  note: "备注",
+  tip: "提示",
+  warning: "注意",
+  danger: "警告",
+};
+
+const label = labels[type] ?? "备注";
+---
+
+<div class="callout" data-type={type} role="alert" aria-label={label}>
+  <span class="callout-label">{label}</span>
+  <div class="callout-content">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .callout {
+    margin: var(--space-6) 0;
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-note-border);
+    background: var(--color-note-bg);
+    font-size: 0.9375rem;
+    line-height: var(--line-height-relaxed);
+  }
+
+  .callout[data-type="tip"] {
+    border-left-color: var(--color-tip-border);
+    background: var(--color-tip-bg);
+  }
+
+  .callout[data-type="warning"] {
+    border-left-color: var(--color-warning-border);
+    background: var(--color-warning-bg);
+  }
+
+  .callout[data-type="danger"] {
+    border-left-color: var(--color-danger-border);
+    background: var(--color-danger-bg);
+  }
+
+  .callout-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: var(--space-1);
+    color: var(--color-note-border);
+  }
+
+  .callout[data-type="tip"] .callout-label {
+    color: var(--color-tip-border);
+  }
+
+  .callout[data-type="warning"] .callout-label {
+    color: var(--color-warning-border);
+  }
+
+  .callout[data-type="danger"] .callout-label {
+    color: var(--color-danger-border);
+  }
+
+  .callout-content :global(p) {
+    margin: var(--space-2) 0;
+  }
+
+  .callout-content :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .callout-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .callout-content :global(code) {
+    background: var(--color-bg);
+  }
+</style>

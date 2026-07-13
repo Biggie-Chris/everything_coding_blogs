@@ -1,0 +1,40 @@
+---
+import PageLayout from "@layouts/PageLayout.astro";
+import PostList from "@components/post/PostList.astro";
+import { getAllTags, getPostsByTag } from "@lib/content/tags";
+import { tagSlug } from "@lib/urls";
+
+export async function getStaticPaths() {
+  const tags = await getAllTags();
+  return tags.map((t) => ({ params: { tag: tagSlug(t.name) }, props: { tagName: t.name } }));
+}
+
+const { tagName } = Astro.props;
+const posts = await getPostsByTag(tagName);
+---
+
+<PageLayout meta={{ title: `标签: ${tagName}`, description: `查看标签 "${tagName}" 下的所有文章` }}>
+  <h1 class="tag-page-title">
+    标签：<span class="tag-page-name">{tagName}</span>
+  </h1>
+  <p class="tag-page-count">共 {posts.length} 篇文章</p>
+
+  <PostList posts={posts} emptyMessage={`暂无标记为 "${tagName}" 的文章`} />
+</PageLayout>
+
+<style>
+  .tag-page-title {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-2);
+  }
+
+  .tag-page-name {
+    color: var(--color-accent);
+  }
+
+  .tag-page-count {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-8);
+  }
+</style>
