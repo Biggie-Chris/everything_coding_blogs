@@ -80,12 +80,5 @@
     outline-offset: 2px;
   }
 
-  .theme-icon { display: none; }
-
-  /* system mode (no data-theme): show system icon */
-  :root:not([data-theme]) .theme-icon-system { display: inline; }
-  /* light: show sun */
-  [data-theme="light"] .theme-icon-light { display: inline; }
-  /* dark: show moon */
-  [data-theme="dark"] .theme-icon-dark { display: inline; }
+  /* theme-icon visibility rules are in global.css (must be unscoped to match [data-theme] on <html>) */
 </style>

@@ -64,6 +64,14 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
     </header>
 
     <div class="post-body">
+      {
+        tocHeadings.length > 0 && (
+          <aside class="post-toc-desktop">
+            <TableOfContents headings={tocHeadings} />
+          </aside>
+        )
+      }
+
       <div class="post-content prose">
         {
           tocHeadings.length > 0 && (
@@ -76,14 +84,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
         <Content />
       </div>
-
-      {
-        tocHeadings.length > 0 && (
-          <aside class="post-toc-desktop">
-            <TableOfContents headings={tocHeadings} />
-          </aside>
-        )
-      }
     </div>
 
     <footer class="post-footer">
