@@ -5,6 +5,9 @@
 @import "./utilities.css";
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -12,6 +15,10 @@ body {
   transition:
     background-color var(--transition-normal),
     color var(--transition-normal);
+}
+
+#main-content {
+  flex: 1;
 }
 
 ::selection {

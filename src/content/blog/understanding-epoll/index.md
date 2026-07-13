@@ -68,7 +68,7 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 
 下面是一个完整的 TCP echo 服务端示例：
 
-```c title="server.c" {5-12, 18-24}
+```c title="server.c"
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

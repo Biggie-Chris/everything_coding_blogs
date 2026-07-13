@@ -141,9 +141,9 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   }
 
   .post-content {
+    width: 100%;
     max-width: var(--prose-width);
     min-width: 0;
-    flex: 1;
   }
 
   .post-toc-desktop {
@@ -178,6 +178,19 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   .post-footer {
     max-width: var(--prose-width);
     margin: var(--space-16) auto 0;
+  }
+
+  @media (max-width: 640px) {
+    .post-header,
+    .post-footer {
+      padding-left: var(--space-1);
+      padding-right: var(--space-1);
+    }
+
+    .post-content {
+      padding-left: var(--space-1);
+      padding-right: var(--space-1);
+    }
   }
 
   @media (max-width: 1024px) {
