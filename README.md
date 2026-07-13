@@ -1,4 +1,4 @@
-# YOUR_NAME 的技术博客
+# CHRIS'S BLOGS
 
 基于 [Astro](https://astro.build) 构建的个人技术博客，专注于 Linux 高性能网络、RDMA、AI Infra 与系统编程。
 
