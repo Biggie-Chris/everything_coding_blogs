@@ -18,7 +18,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
     </nav>
 
     <div class="footer-info">
-      <a href="/rss.xml" class="footer-link" aria-label="RSS 订阅">RSS</a>
+      <a href={`${base}/rss.xml`} class="footer-link" aria-label="RSS 订阅">RSS</a>
       <a href={site.githubUrl} class="footer-link" rel="noopener noreferrer">GitHub</a>
       <span class="footer-copy">&copy; {new Date().getFullYear()} {site.author}</span>
     </div>

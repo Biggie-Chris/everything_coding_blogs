@@ -10,7 +10,6 @@ import RelatedPosts from "@components/post/RelatedPosts.astro";
 import type { Post } from "@lib/content/posts";
 import { getSeriesByName, getSeriesPosition } from "@lib/content/series";
 import { estimateReadingTime } from "@lib/dates";
-import { githubEditUrl } from "@lib/urls";
 
 export interface Props {
   post: Post;
@@ -65,14 +64,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
     </header>
 
     <div class="post-body">
-      {
-        tocHeadings.length > 0 && (
-          <aside class="post-toc-desktop">
-            <TableOfContents headings={tocHeadings} />
-          </aside>
-        )
-      }
-
       <div class="post-content prose">
         {
           tocHeadings.length > 0 && (
@@ -85,6 +76,14 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
         <Content />
       </div>
+
+      {
+        tocHeadings.length > 0 && (
+          <aside class="post-toc-desktop">
+            <TableOfContents headings={tocHeadings} />
+          </aside>
+        )
+      }
     </div>
 
     <footer class="post-footer">
@@ -100,10 +99,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
         seriesPosts={series?.posts ?? null}
         currentSlug={post.id}
       />
-
-      <div class="post-edit-link">
-        <a href={githubEditUrl(post.id)} rel="noopener noreferrer"> 在 GitHub 上编辑此页 </a>
-      </div>
 
       <RelatedPosts post={post} />
     </footer>
@@ -140,8 +135,15 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
   .post-body {
     display: flex;
+    justify-content: center;
     gap: var(--space-8);
     position: relative;
+  }
+
+  .post-content {
+    max-width: var(--prose-width);
+    min-width: 0;
+    flex: 1;
   }
 
   .post-toc-desktop {
@@ -152,11 +154,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
     align-self: flex-start;
     max-height: calc(100vh - var(--header-height) - var(--space-16));
     overflow-y: auto;
-  }
-
-  .post-content {
-    flex: 1;
-    min-width: 0;
   }
 
   .post-toc-mobile {
@@ -181,17 +178,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
   .post-footer {
     max-width: var(--prose-width);
     margin: var(--space-16) auto 0;
-  }
-
-  .post-edit-link {
-    margin-top: var(--space-6);
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--color-border-light);
-    font-size: var(--font-size-sm);
-  }
-
-  .post-edit-link a {
-    color: var(--color-text-muted);
   }
 
   @media (max-width: 1024px) {

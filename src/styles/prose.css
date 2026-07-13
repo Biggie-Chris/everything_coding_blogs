@@ -187,6 +187,12 @@
   max-width: var(--code-width);
 }
 
+/* Prevent selection styling from stacking on top of Expressive Code line highlights */
+.prose .expressive-code *::selection {
+  background: transparent;
+  color: inherit;
+}
+
 @media (max-width: 640px) {
   .prose {
     font-size: var(--font-size-sm);
