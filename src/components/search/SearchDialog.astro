@@ -67,6 +67,12 @@ import { features } from "@config/features";
     width: 90vw;
     max-height: 80vh;
     overflow: hidden;
+    /* Center the dialog on screen */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
   }
 
   .search-dialog::backdrop {

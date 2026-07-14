@@ -13,7 +13,8 @@ export interface Props {
 }
 
 const { meta, noHeader = false, noFooter = false } = Astro.props;
-const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") || ""; // no trailing slash, for URL concatenation
+const baseSlash = import.meta.env.BASE_URL; // with trailing slash, for Pagefind baseUrl
 ---
 
 <!doctype html>
@@ -33,7 +34,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
     </main>
     {!noFooter && <SiteFooter />}
     <SearchDialog />
-    <script is:inline define:vars={{ baseUrl: base || "/" }}>
+    <script is:inline define:vars={{ baseUrl: baseSlash }}>
       window.__SITE_BASE__ = baseUrl;
     </script>
     <script src={`${base}/js/search.js`} defer is:inline></script>
