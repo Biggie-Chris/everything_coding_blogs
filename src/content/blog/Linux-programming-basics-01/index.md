@@ -17,7 +17,7 @@ featured: false
 
 选择双向链表作为底层数据结构，通过宏定义函数的方式（减小函数调用开销）实现链表的插入与删除操作：
 
-```C
+```c
 #define LIST_INSERT(node, head) do { \
     node->prev = NULL;               \
     node->next = head;               \
