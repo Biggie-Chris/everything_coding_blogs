@@ -191,7 +191,7 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
   @media (max-width: 860px) {
     .post {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       padding-left: clamp(16px, 4vw, 32px);
       padding-right: clamp(16px, 4vw, 32px);
     }

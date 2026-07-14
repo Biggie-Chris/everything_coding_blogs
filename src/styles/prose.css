@@ -206,6 +206,12 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .prose > * {
+    max-width: 100%;
   }
 
   .prose p {
@@ -246,11 +252,20 @@
     border-radius: var(--radius-sm);
   }
 
-  .prose pre,
-  .prose .expressive-code {
-    margin-left: calc(-1 * var(--space-1));
-    margin-right: calc(-1 * var(--space-1));
+  .prose pre {
+    margin: var(--space-4) 0;
     border-radius: var(--radius-sm);
+  }
+
+  .prose .expressive-code {
+    max-width: 100%;
+    margin: var(--space-4) 0;
+    border-radius: var(--radius-sm);
+  }
+
+  .prose .expressive-code pre {
+    margin: 0;
+    max-width: 100%;
   }
 
   .prose table {
