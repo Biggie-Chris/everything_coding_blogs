@@ -58,6 +58,7 @@
   --line-height-loose: 1.85;
 
   /* Spacing */
+  --space-0-5: 0.125rem;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

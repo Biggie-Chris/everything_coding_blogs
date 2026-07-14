@@ -76,7 +76,15 @@ a:visited {
 }
 
 /* Theme toggle icons — must be global (Astro scoping breaks [data-theme] selectors) */
-.theme-icon { display: none; }
-:root:not([data-theme]) .theme-icon-system { display: inline; }
-[data-theme="light"] .theme-icon-light { display: inline; }
-[data-theme="dark"] .theme-icon-dark { display: inline; }
+.theme-icon {
+  display: none;
+}
+:root:not([data-theme]) .theme-icon-system {
+  display: inline;
+}
+[data-theme="light"] .theme-icon-light {
+  display: inline;
+}
+[data-theme="dark"] .theme-icon-dark {
+  display: inline;
+}
