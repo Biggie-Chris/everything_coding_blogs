@@ -8,7 +8,7 @@ category: "网络编程"
 series: "Linux 网络编程深入"
 seriesOrder: 1
 draft: false
-featured: true
+featured: false
 ---
 
 ## epoll 解决了什么问题
