@@ -18,14 +18,15 @@
     if (pagefind) return pagefind;
     try {
       var pf = window.__pagefind__;
+      var base = window.__SITE_BASE__ || "/";
       if (!pf) {
-        var mod = await import("/pagefind/pagefind.js");
+        var mod = await import(base + "pagefind/pagefind.js");
         pagefind = mod;
       } else {
         pagefind = pf;
       }
       if (pagefind && pagefind.options) {
-        await pagefind.options({ baseUrl: "/" });
+        await pagefind.options({ baseUrl: base });
       }
       return pagefind;
     } catch (e) {
