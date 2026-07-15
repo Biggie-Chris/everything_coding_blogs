@@ -36,7 +36,7 @@ export function getMonthLabel(key: string, locale = "zh-CN"): string {
 export function estimateReadingTime(text: string): number {
   const chineseCharsPerMinute = 400;
   const englishWordsPerMinute = 240;
-  const codeCharsPerMinute = 200;
+  const codeCharsPerMinute = 600;
 
   const codeBlocks = [...text.matchAll(/```[\s\S]*?```/g)];
   let codeCharCount = 0;
