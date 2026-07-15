@@ -2,13 +2,17 @@
 title Tech Blog Update
 cd /d "%~dp0"
 
-REM Check pnpm is available
-where pnpm >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] pnpm not found in PATH.
-    echo Make sure pnpm is installed and available from the command line.
-    pause
-    exit /b 1
+REM Use local pnpm matching packageManager version (11.12.0)
+set "LOCAL_PNPM=%USERPROFILE%\.local\pnpm"
+if exist "%LOCAL_PNPM%\pnpm.cmd" (
+    set "PNPM=%LOCAL_PNPM%\pnpm.cmd"
+    set "PATH=%LOCAL_PNPM%;%LOCAL_PNPM%\node_modules\.bin;%PATH%"
+) else if exist "%LOCAL_PNPM%\pnpm" (
+    set "PNPM=node %LOCAL_PNPM%\pnpm"
+) else (
+    echo [WARN] Local pnpm 11.12.0 not found at %LOCAL_PNPM%
+    echo Trying global pnpm instead...
+    set "PNPM=pnpm"
 )
 
 echo ============================================
@@ -19,7 +23,7 @@ echo.
 
 REM Step 1: Format code
 echo [1/4] Formatting code...
-call pnpm format
+call %PNPM% format
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Formatting failed. Aborting.
@@ -31,7 +35,7 @@ echo.
 
 REM Step 2: Type check
 echo [2/4] Checking articles and types...
-call pnpm check
+call %PNPM% check
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Type check failed. Fix errors before committing. Aborting.
@@ -43,7 +47,7 @@ echo.
 
 REM Step 3: Build
 echo [3/4] Building site...
-call pnpm build
+call %PNPM% build
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Build failed. Fix errors before committing. Aborting.
