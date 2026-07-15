@@ -28,29 +28,82 @@ const { headings } = Astro.props;
 </nav>
 
 <script>
-  function initToc() {
+  const HEADER_OFFSET = 80;
+
+  function getCurrentActiveId(): string | null {
+    const headings = document.querySelectorAll("article h2[id], article h3[id], article h4[id]");
+    if (headings.length === 0) return null;
+
+    const nearBottom =
+      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60;
+
+    if (nearBottom) {
+      return headings[headings.length - 1]?.id ?? null;
+    }
+
+    let active = headings[0]!;
+    for (const h of headings) {
+      if (h.getBoundingClientRect().top <= HEADER_OFFSET) {
+        active = h;
+      } else {
+        break;
+      }
+    }
+    return active.id;
+  }
+
+  function updateActiveLinks(activeId: string): void {
+    const links = document.querySelectorAll(".toc-link");
+    links.forEach((link) => {
+      const href = link.getAttribute("href");
+      const targetId = href ? href.slice(1) : "";
+      link.classList.toggle("toc-active", targetId === activeId);
+    });
+  }
+
+  let ticking = false;
+
+  function handleScroll(): void {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const activeId = getCurrentActiveId();
+      if (activeId) updateActiveLinks(activeId);
+      ticking = false;
+    });
+  }
+
+  function handleTocClick(e: MouseEvent): void {
+    const link = (e.target as Element).closest(".toc-link");
+    if (!link) return;
+    const href = link.getAttribute("href");
+    if (!href) return;
+    const activeId = href.slice(1);
+    updateActiveLinks(activeId);
+  }
+
+  let scrollListener: (() => void) | null = null;
+  let resizeListener: (() => void) | null = null;
+  let clickListener: ((e: MouseEvent) => void) | null = null;
+
+  function initToc(): void {
     const links = document.querySelectorAll(".toc-link");
     if (links.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const link = document.querySelector(`.toc-link[href="#${entry.target.id}"]`);
-          if (link) {
-            link.classList.toggle("toc-active", entry.isIntersecting);
-          }
-        });
-      },
-      { rootMargin: "-80px 0px -80% 0px" },
-    );
+    if (scrollListener) window.removeEventListener("scroll", scrollListener);
+    if (resizeListener) window.removeEventListener("resize", resizeListener);
+    if (clickListener) document.removeEventListener("click", clickListener);
 
-    links.forEach((link) => {
-      const href = link.getAttribute("href");
-      if (!href) return;
-      const id = href.replace("#", "");
-      const target = document.getElementById(id);
-      if (target) observer.observe(target);
-    });
+    const activeId = getCurrentActiveId();
+    if (activeId) updateActiveLinks(activeId);
+
+    scrollListener = handleScroll;
+    resizeListener = handleScroll;
+    clickListener = handleTocClick;
+
+    window.addEventListener("scroll", scrollListener, { passive: true });
+    window.addEventListener("resize", resizeListener, { passive: true });
+    document.addEventListener("click", clickListener);
   }
 
   initToc();
