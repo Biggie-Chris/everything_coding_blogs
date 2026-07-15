@@ -34,11 +34,34 @@ export function getMonthLabel(key: string, locale = "zh-CN"): string {
 }
 
 export function estimateReadingTime(text: string): number {
-  const wordsPerMinute = 300;
-  const cleaned = text.replace(/```[\s\S]*?```/g, "").replace(/[#*[\]()>|`]/g, "");
-  const charCount = cleaned.length;
-  const minutes = Math.ceil(charCount / wordsPerMinute);
-  return Math.max(1, minutes);
+  const chineseCharsPerMinute = 400;
+  const englishWordsPerMinute = 240;
+  const codeCharsPerMinute = 200;
+
+  const codeBlocks = [...text.matchAll(/```[\s\S]*?```/g)];
+  let codeCharCount = 0;
+  codeBlocks.forEach((m) => {
+    codeCharCount += m[0].length;
+  });
+
+  const textWithoutCode = text.replace(/```[\s\S]*?```/g, "");
+
+  const cleaned = textWithoutCode.replace(/^---[\s\S]*?---/g, "");
+
+  const chineseChars = (cleaned.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+
+  const asciiOnly = cleaned.replace(/[\u4e00-\u9fff\u3400-\u4dbf]/g, "");
+
+  const wordText = asciiOnly.replace(/[^a-zA-Z0-9]+/g, " ").trim();
+  const englishWords = wordText ? wordText.split(/\s+/).length : 0;
+
+  const codeMinutes = codeCharCount / codeCharsPerMinute;
+  const chineseMinutes = chineseChars / chineseCharsPerMinute;
+  const englishMinutes = englishWords / englishWordsPerMinute;
+
+  const totalMinutes = codeMinutes + chineseMinutes + englishMinutes;
+
+  return Math.max(1, Math.ceil(totalMinutes));
 }
 
 export function isUpdatedRecently(pubDate: Date, updatedDate?: Date): boolean {
