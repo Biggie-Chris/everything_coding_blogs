@@ -3,6 +3,16 @@
 (function registerMdxPasteWidget() {
   "use strict";
 
+  // Decap 的 CDN 构建把 createClass 和 h 暴露为全局函数；保留 CMS 上的
+  // 回退路径，兼容以后可能调整的构建方式。
+  if (!window.CMS) return;
+  if (!window.CMS.createClass && window.createClass) window.CMS.createClass = window.createClass;
+  if (!window.CMS.h && window.h) window.CMS.h = window.h;
+  if (!window.CMS.createClass || !window.CMS.h) {
+    window.console.error("Decap CMS custom widget API is unavailable.");
+    return;
+  }
+
   var MAX_IMAGE_SIZE = 10 * 1024 * 1024;
   var MEDIA_FOLDER = "src/content/blog/uploads";
   var PUBLIC_FOLDER = "../uploads";
