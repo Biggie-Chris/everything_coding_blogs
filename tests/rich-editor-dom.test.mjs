@@ -53,6 +53,9 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   });
 
   assert.ok(document.querySelector(".rich-mdx-editor__canvas.ProseMirror"));
+  const editorStyles = document.getElementById("rich-mdx-editor-styles")?.textContent || "";
+  assert.match(editorStyles, /max-width:1240px/);
+  assert.match(editorStyles, /overflow-x:auto!important/);
   assert.match(document.querySelector(".rich-mdx-editor__status")?.textContent || "", /实时编辑中/);
   assert.ok(document.querySelector(".rich-mdx-editor__bubble-menu"));
   assert.ok(document.querySelector(".rich-mdx-editor__drag-handle"));
