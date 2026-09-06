@@ -1,0 +1,26 @@
+import Callout from "@components/post/Callout.astro";
+import Figure from "@components/post/Figure.astro";
+import Mermaid from "@components/post/Mermaid.astro";
+
+## RDMA 快速入门
+
+**RDMA** 支持低延迟传输。
+
+- InfiniBand
+- RoCE
+
+| 模式 | 特点       |
+| ---- | ---------- |
+| RoCE | 基于以太网 |
+
+    int main(void) {
+      return 0;
+    }
+
+<Callout type="warning">**注意：** 请确认网卡支持 RDMA。</Callout>
+
+<Figure src="../uploads/topology.png" alt="网络拓扑" caption="RDMA 网络拓扑" />
+
+<Mermaid chart="flowchart LR" />
+
+<script>window.__unsafe = true;</script>

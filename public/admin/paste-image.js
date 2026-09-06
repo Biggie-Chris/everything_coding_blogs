@@ -16,9 +16,7 @@
   var MAX_IMAGE_SIZE = 10 * 1024 * 1024;
   var MEDIA_FOLDER = "src/content/blog/uploads";
   var PUBLIC_FOLDER = "../uploads";
-  var MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js";
-  var MARKED_CDN = "https://cdn.jsdelivr.net/npm/marked@16.4.2/lib/marked.umd.js";
-  var DOMPURIFY_CDN = "https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js";
+  var MERMAID_SCRIPT = "./vendor/mermaid.min.js";
   var mermaidLoader;
   var markdownRendererLoader;
   var mermaidId = 0;
@@ -165,11 +163,18 @@
     if (mermaidLoader) return mermaidLoader;
     mermaidLoader = new Promise(function (resolve, reject) {
       var script = document.createElement("script");
-      script.src = MERMAID_CDN;
+      script.src = MERMAID_SCRIPT;
       script.async = true;
       script.onload = function () {
-        if (window.mermaid) resolve(window.mermaid);
-        else reject(new Error("Mermaid script loaded without an API."));
+        var bundledMermaid =
+          window.mermaid ||
+          (window.__esbuild_esm_mermaid_nm && window.__esbuild_esm_mermaid_nm.mermaid);
+        if (bundledMermaid) {
+          window.mermaid = bundledMermaid;
+          resolve(bundledMermaid);
+        } else {
+          reject(new Error("Mermaid script loaded without an API."));
+        }
       };
       script.onerror = function () {
         reject(new Error("Unable to load Mermaid."));

@@ -211,6 +211,7 @@ Mermaid 已启用，并且仅会在文章实际引入 Mermaid 组件时加载。
 pnpm check       # TypeScript 类型检查
 pnpm format      # Prettier 格式化
 pnpm format:check # 检查格式
+pnpm test        # CMS Markdown / MDX 预览回归测试
 ```
 
 ## 目录结构
