@@ -108,5 +108,5 @@ collections:
           - 请输入以 http:// 或 https:// 开头的地址。
       - label: 正文
         name: body
-        widget: markdown
-        hint: 支持与本地文章相同的 Markdown / GFM 和代码块标记。
+        widget: mdx_paste
+        hint: 支持 Markdown / GFM / MDX。可直接粘贴图片，图片会随本次 Publish 一起提交。
