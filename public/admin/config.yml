@@ -10,9 +10,10 @@ backend:
 # 点击 Publish 后立即提交到 main，由 .github/workflows/deploy.yml 自动发布。
 publish_mode: simple
 
-# 上传图片保留在内容目录；所有文章目录都可以通过 ../uploads/ 相对引用它们。
-media_folder: src/content/blog/uploads
-public_folder: ../uploads
+# CMS 上传的资源必须位于 Astro 的 public 目录。这样 MDX 不会把图片当作
+# 本地模块解析，后台提交图片与文章的顺序也不会再造成构建期的找不到文件错误。
+media_folder: public/uploads
+public_folder: /everything_coding_blogs/uploads
 
 slug:
   encoding: ascii
@@ -109,4 +110,4 @@ collections:
       - label: 正文
         name: body
         widget: mdx_paste
-        hint: 支持 Markdown / GFM / MDX。工具栏可插入 Callout、Figure 与 Mermaid；可直接粘贴图片并随 Publish 一起提交。
+        hint: 可视化块编辑器：输入 / 插入内容块；支持 Markdown / GFM / MDX、Callout、Figure、Mermaid 与直接粘贴图片。

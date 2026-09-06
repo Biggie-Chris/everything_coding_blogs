@@ -1,0 +1,947 @@
+import { Editor, Extension, Node, mergeAttributes } from "@tiptap/core";
+import Image from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
+import Placeholder from "@tiptap/extension-placeholder";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import StarterKit from "@tiptap/starter-kit";
+import Suggestion from "@tiptap/suggestion";
+
+import { __private__, editorJsonToMdx, mdxToEditorHtml } from "./mdx-format.js";
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MEDIA_FOLDER = "public/uploads";
+const PUBLIC_FOLDER = "/everything_coding_blogs/uploads";
+const CALLOUTS = {
+  note: { label: "备注", icon: "i", description: "补充背景或说明" },
+  tip: { label: "提示", icon: "✦", description: "实践建议或技巧" },
+  warning: { label: "注意", icon: "!", description: "需要特别留意的限制" },
+  danger: { label: "警告", icon: "⚠", description: "风险或危险操作" },
+};
+let mermaidRenderId = 0;
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function nodePosition(getPos) {
+  const position = typeof getPos === "function" ? getPos() : getPos;
+  return typeof position === "number" ? position : null;
+}
+
+function updateNodeAttributes(editor, getPos, node, attributes) {
+  const position = nodePosition(getPos);
+  if (position === null) return;
+  const transaction = editor.state.tr.setNodeMarkup(position, undefined, {
+    ...node.attrs,
+    ...attributes,
+  });
+  editor.view.dispatch(transaction);
+}
+
+function deleteNode(editor, getPos, node) {
+  const position = nodePosition(getPos);
+  if (position === null) return;
+  editor.view.dispatch(editor.state.tr.delete(position, position + node.nodeSize));
+}
+
+function createButton(label, className = "") {
+  const button = document.createElement("button");
+  button.className = className;
+  button.type = "button";
+  button.textContent = label;
+  return button;
+}
+
+function createIconButton(label, title) {
+  const button = createButton(label, "rich-mdx-editor__icon-button");
+  button.title = title;
+  button.setAttribute("aria-label", title);
+  return button;
+}
+
+function filenameFor(file) {
+  const extension =
+    { "image/gif": "gif", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[
+      file.type
+    ] || "png";
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "");
+  return `pasted-${stamp}.${extension}`;
+}
+
+function getPastedImage(event) {
+  const items = event.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) return item.getAsFile();
+  }
+  return null;
+}
+
+function renderMermaid(target, chart) {
+  const mermaid = window.mermaid || window.__esbuild_esm_mermaid_nm?.mermaid;
+  if (!chart.trim()) {
+    target.innerHTML =
+      '<span class="rich-mdx-editor__empty-diagram">在左侧填写 Mermaid 图表代码。</span>';
+    return;
+  }
+  if (!mermaid?.render) {
+    target.innerHTML =
+      '<span class="rich-mdx-editor__diagram-error">Mermaid 渲染器尚未加载。</span>';
+    return;
+  }
+
+  const expectedChart = chart;
+  target.textContent = "正在渲染图表…";
+  mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
+  mermaidRenderId += 1;
+  mermaid
+    .render(`rich-mdx-mermaid-${mermaidRenderId}`, chart)
+    .then((result) => {
+      if (target.dataset.chart === expectedChart) target.innerHTML = result.svg;
+    })
+    .catch(() => {
+      if (target.dataset.chart === expectedChart) {
+        target.innerHTML =
+          '<span class="rich-mdx-editor__diagram-error">Mermaid 语法有误，暂时无法渲染。</span>';
+      }
+    });
+}
+
+function createCalloutNodeView({ node, getPos, editor }) {
+  let currentNode = node;
+  const wrapper = document.createElement("section");
+  wrapper.className = "rich-mdx-editor__callout";
+  wrapper.dataset.type = node.attrs.type;
+
+  const header = document.createElement("div");
+  header.className = "rich-mdx-editor__callout-header";
+  header.contentEditable = "false";
+  const select = document.createElement("select");
+  select.className = "rich-mdx-editor__callout-kind";
+  for (const [type, value] of Object.entries(CALLOUTS)) {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = `${value.icon} ${value.label}`;
+    select.append(option);
+  }
+  select.value = node.attrs.type;
+  const description = document.createElement("span");
+  description.className = "rich-mdx-editor__callout-description";
+  header.append(select, description);
+
+  const contentDOM = document.createElement("div");
+  contentDOM.className = "rich-mdx-editor__callout-content";
+  wrapper.append(header, contentDOM);
+
+  const refresh = (updatedNode) => {
+    const type = CALLOUTS[updatedNode.attrs.type] ? updatedNode.attrs.type : "note";
+    wrapper.dataset.type = type;
+    if (select.value !== type) select.value = type;
+    description.textContent = CALLOUTS[type].description;
+  };
+  refresh(node);
+  select.addEventListener("change", () =>
+    updateNodeAttributes(editor, getPos, currentNode, { type: select.value }),
+  );
+
+  return {
+    dom: wrapper,
+    contentDOM,
+    update(updatedNode) {
+      if (updatedNode.type.name !== "callout") return false;
+      currentNode = updatedNode;
+      refresh(updatedNode);
+      return true;
+    },
+    ignoreMutation(mutation) {
+      return mutation.target === select || header.contains(mutation.target);
+    },
+  };
+}
+
+function createFigureNodeView(context) {
+  return ({ node, getPos, editor }) => {
+    let currentNode = node;
+    const wrapper = document.createElement("figure");
+    wrapper.className = "rich-mdx-editor__figure";
+    wrapper.contentEditable = "false";
+    const image = document.createElement("img");
+    image.className = "rich-mdx-editor__figure-image";
+    const empty = document.createElement("div");
+    empty.className = "rich-mdx-editor__figure-empty";
+    empty.textContent = "选择图片，或直接粘贴图片到正文中";
+    const controls = document.createElement("div");
+    controls.className = "rich-mdx-editor__figure-controls";
+    const altInput = document.createElement("input");
+    altInput.placeholder = "替代文字（无障碍说明）";
+    altInput.setAttribute("aria-label", "图片替代文字");
+    const captionInput = document.createElement("input");
+    captionInput.placeholder = "图片说明（可选）";
+    captionInput.setAttribute("aria-label", "图片说明");
+    const changeButton = createButton("更换图片", "rich-mdx-editor__secondary-button");
+    const removeButton = createButton("删除", "rich-mdx-editor__danger-button");
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/png,image/jpeg,image/gif,image/webp";
+    fileInput.hidden = true;
+    controls.append(altInput, captionInput, changeButton, removeButton, fileInput);
+    wrapper.append(image, empty, controls);
+
+    const update = (attributes) => updateNodeAttributes(editor, getPos, currentNode, attributes);
+    const refresh = (updatedNode) => {
+      const { src = "", alt = "", caption = "" } = updatedNode.attrs;
+      const resolved = context.getAsset?.(src) || src;
+      image.src = resolved;
+      image.alt = alt || "图片";
+      image.hidden = !src;
+      empty.hidden = Boolean(src);
+      if (document.activeElement !== altInput) altInput.value = alt;
+      if (document.activeElement !== captionInput) captionInput.value = caption;
+    };
+    refresh(node);
+
+    altInput.addEventListener("input", () => update({ alt: altInput.value }));
+    captionInput.addEventListener("input", () => update({ caption: captionInput.value }));
+    changeButton.addEventListener("click", () => fileInput.click());
+    removeButton.addEventListener("click", () => deleteNode(editor, getPos, currentNode));
+    fileInput.addEventListener("change", () => {
+      const [file] = fileInput.files || [];
+      if (file) context.stageImage(file, (src) => update({ src }));
+      fileInput.value = "";
+    });
+
+    return {
+      dom: wrapper,
+      update(updatedNode) {
+        if (updatedNode.type.name !== "figure") return false;
+        currentNode = updatedNode;
+        refresh(updatedNode);
+        return true;
+      },
+      ignoreMutation() {
+        return true;
+      },
+    };
+  };
+}
+
+function createMermaidNodeView() {
+  return ({ node, getPos, editor }) => {
+    let currentNode = node;
+    let renderTimer;
+    const wrapper = document.createElement("section");
+    wrapper.className = "rich-mdx-editor__mermaid";
+    wrapper.contentEditable = "false";
+    const header = document.createElement("div");
+    header.className = "rich-mdx-editor__special-header";
+    header.innerHTML = "<strong>Mermaid 图表</strong><span>修改图表代码后即时渲染</span>";
+    const editorGrid = document.createElement("div");
+    editorGrid.className = "rich-mdx-editor__mermaid-grid";
+    const textarea = document.createElement("textarea");
+    textarea.className = "rich-mdx-editor__mermaid-source";
+    textarea.spellcheck = false;
+    textarea.setAttribute("aria-label", "Mermaid 图表代码");
+    const preview = document.createElement("div");
+    preview.className = "rich-mdx-editor__mermaid-preview";
+    editorGrid.append(textarea, preview);
+    const removeButton = createButton(
+      "删除图表",
+      "rich-mdx-editor__danger-button rich-mdx-editor__special-delete",
+    );
+    wrapper.append(header, editorGrid, removeButton);
+
+    const draw = (chart) => {
+      window.clearTimeout(renderTimer);
+      preview.dataset.chart = chart;
+      renderTimer = window.setTimeout(() => renderMermaid(preview, chart), 220);
+    };
+    const refresh = (updatedNode) => {
+      const chart = updatedNode.attrs.chart || "";
+      if (document.activeElement !== textarea) textarea.value = chart;
+      draw(chart);
+    };
+    refresh(node);
+    textarea.addEventListener("input", () => {
+      const chart = textarea.value;
+      updateNodeAttributes(editor, getPos, currentNode, { chart });
+      draw(chart);
+    });
+    removeButton.addEventListener("click", () => deleteNode(editor, getPos, currentNode));
+
+    return {
+      dom: wrapper,
+      update(updatedNode) {
+        if (updatedNode.type.name !== "mermaid") return false;
+        currentNode = updatedNode;
+        refresh(updatedNode);
+        return true;
+      },
+      destroy() {
+        window.clearTimeout(renderTimer);
+      },
+      ignoreMutation() {
+        return true;
+      },
+    };
+  };
+}
+
+function openRawMdxDialog(initialSource, onSave) {
+  const overlay = document.createElement("div");
+  overlay.className = "rich-mdx-editor__dialog-overlay";
+  const dialog = document.createElement("section");
+  dialog.className = "rich-mdx-editor__dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.innerHTML =
+    "<h3>编辑原始 MDX 块</h3><p>此块使用了当前可视化编辑器尚不认识的 JSX。保留它可避免发布时丢失内容。</p>";
+  const textarea = document.createElement("textarea");
+  textarea.value = initialSource;
+  textarea.spellcheck = false;
+  const footer = document.createElement("div");
+  footer.className = "rich-mdx-editor__dialog-footer";
+  const cancel = createButton("取消", "rich-mdx-editor__secondary-button");
+  const save = createButton("保存 MDX 块", "rich-mdx-editor__primary-button");
+  footer.append(cancel, save);
+  dialog.append(textarea, footer);
+  overlay.append(dialog);
+  document.body.append(overlay);
+  textarea.focus();
+  const close = () => overlay.remove();
+  cancel.addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  save.addEventListener("click", () => {
+    onSave(textarea.value);
+    close();
+  });
+}
+
+function createRawMdxNodeView() {
+  return ({ node, getPos, editor }) => {
+    let currentNode = node;
+    const wrapper = document.createElement("section");
+    wrapper.className = "rich-mdx-editor__raw-mdx";
+    wrapper.contentEditable = "false";
+    const text = document.createElement("div");
+    text.className = "rich-mdx-editor__raw-mdx-text";
+    const edit = createButton("编辑 MDX 块", "rich-mdx-editor__secondary-button");
+    const remove = createButton("删除", "rich-mdx-editor__danger-button");
+    wrapper.append(text, edit, remove);
+    const refresh = (updatedNode) => {
+      const firstLine =
+        String(updatedNode.attrs.source || "")
+          .trim()
+          .split("\n")[0] || "空 MDX 块";
+      text.textContent = `原始 MDX · ${firstLine.slice(0, 80)}`;
+    };
+    refresh(node);
+    edit.addEventListener("click", () =>
+      openRawMdxDialog(currentNode.attrs.source || "", (source) =>
+        updateNodeAttributes(editor, getPos, currentNode, { source }),
+      ),
+    );
+    remove.addEventListener("click", () => deleteNode(editor, getPos, currentNode));
+    return {
+      dom: wrapper,
+      update(updatedNode) {
+        if (updatedNode.type.name !== "rawMdx") return false;
+        currentNode = updatedNode;
+        refresh(updatedNode);
+        return true;
+      },
+      ignoreMutation() {
+        return true;
+      },
+    };
+  };
+}
+
+const Callout = Node.create({
+  name: "callout",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return { type: { default: "note" } };
+  },
+  parseHTML() {
+    return [{ tag: "section[data-mdx-callout]" }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "section",
+      mergeAttributes(HTMLAttributes, { "data-mdx-callout": "true", "data-type": node.attrs.type }),
+      0,
+    ];
+  },
+  addNodeView() {
+    return createCalloutNodeView;
+  },
+});
+
+const Figure = Node.create({
+  name: "figure",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addOptions() {
+    return { context: {} };
+  },
+  addAttributes() {
+    return {
+      src: { default: "" },
+      alt: { default: "" },
+      caption: { default: "" },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "figure[data-mdx-figure]",
+        getAttrs: (element) => ({
+          src: __private__.decodeAttribute(element.getAttribute("data-src")),
+          alt: __private__.decodeAttribute(element.getAttribute("data-alt")),
+          caption: __private__.decodeAttribute(element.getAttribute("data-caption")),
+        }),
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["figure", mergeAttributes(HTMLAttributes, { "data-mdx-figure": "true" })];
+  },
+  addNodeView() {
+    return createFigureNodeView(this.options.context);
+  },
+});
+
+const Mermaid = Node.create({
+  name: "mermaid",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addAttributes() {
+    return { chart: { default: "" } };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "div[data-mdx-mermaid]",
+        getAttrs: (element) => ({
+          chart: __private__.decodeAttribute(element.getAttribute("data-chart")),
+        }),
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-mdx-mermaid": "true" })];
+  },
+  addNodeView() {
+    return createMermaidNodeView();
+  },
+});
+
+const RawMdx = Node.create({
+  name: "rawMdx",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addAttributes() {
+    return { source: { default: "" } };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "div[data-mdx-raw]",
+        getAttrs: (element) => ({
+          source: __private__.decodeAttribute(element.getAttribute("data-source")),
+        }),
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-mdx-raw": "true" })];
+  },
+  addNodeView() {
+    return createRawMdxNodeView();
+  },
+});
+
+function createSlashMenu(items) {
+  return Extension.create({
+    name: "richMdxSlashMenu",
+    addProseMirrorPlugins() {
+      return [
+        Suggestion({
+          editor: this.editor,
+          char: "/",
+          startOfLine: false,
+          items: ({ query }) =>
+            items.filter((item) =>
+              `${item.label} ${item.keywords}`.toLowerCase().includes(query.toLowerCase()),
+            ),
+          command: ({ editor, range, props }) => props.command({ editor, range }),
+          render: () => {
+            let menu;
+            let unmount;
+            let selectedIndex = 0;
+            let currentProps;
+            const choose = (index) => {
+              const item = currentProps?.items[index];
+              if (item) currentProps.command(item);
+            };
+            const renderItems = (props) => {
+              currentProps = props;
+              selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
+              menu.replaceChildren();
+              if (!props.items.length) {
+                const empty = document.createElement("div");
+                empty.className = "rich-mdx-editor__slash-empty";
+                empty.textContent = "没有匹配的块";
+                menu.append(empty);
+                return;
+              }
+              props.items.forEach((item, index) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `rich-mdx-editor__slash-item${index === selectedIndex ? " is-active" : ""}`;
+                button.innerHTML = `<span class="rich-mdx-editor__slash-icon">${escapeHtml(item.icon)}</span><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>`;
+                button.addEventListener("mousedown", (event) => {
+                  event.preventDefault();
+                  choose(index);
+                });
+                menu.append(button);
+              });
+            };
+            return {
+              onStart(props) {
+                menu = document.createElement("div");
+                menu.className = "rich-mdx-editor__slash-menu";
+                renderItems(props);
+                unmount = props.mount(menu);
+              },
+              onUpdate(props) {
+                renderItems(props);
+              },
+              onKeyDown({ event }) {
+                if (!currentProps?.items.length) return false;
+                if (event.key === "ArrowDown") {
+                  selectedIndex = (selectedIndex + 1) % currentProps.items.length;
+                  renderItems(currentProps);
+                  return true;
+                }
+                if (event.key === "ArrowUp") {
+                  selectedIndex =
+                    (selectedIndex + currentProps.items.length - 1) % currentProps.items.length;
+                  renderItems(currentProps);
+                  return true;
+                }
+                if (event.key === "Enter") {
+                  choose(selectedIndex);
+                  return true;
+                }
+                if (event.key === "Escape") return false;
+                return false;
+              },
+              onExit() {
+                unmount?.();
+                menu = undefined;
+              },
+            };
+          },
+        }),
+      ];
+    },
+  });
+}
+
+function insertBlock(editor, range, content, command) {
+  const chain = editor.chain().focus().deleteRange(range);
+  if (content) chain.insertContent(content);
+  if (command) command(chain);
+  chain.run();
+}
+
+function injectStyles() {
+  if (document.getElementById("rich-mdx-editor-styles")) return;
+  const style = document.createElement("style");
+  style.id = "rich-mdx-editor-styles";
+  style.textContent = `
+    .rich-mdx-editor{border:1px solid #ccd6dc;border-radius:10px;background:#fff;color:#1f2933;box-shadow:0 1px 2px rgba(15,23,42,.03);overflow:hidden}
+    .rich-mdx-editor__hint{color:#637381;font-size:13px;line-height:1.6;margin:0 0 10px}.rich-mdx-editor__toolbar{align-items:center;background:#fbfcfd;border-bottom:1px solid #dce4e8;display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;position:sticky;top:0;z-index:3}.rich-mdx-editor__toolbar-group{align-items:center;border-right:1px solid #dce4e8;display:flex;gap:4px;padding-right:7px}.rich-mdx-editor__toolbar-group:last-child{border-right:0}.rich-mdx-editor__toolbar button,.rich-mdx-editor__toolbar select,.rich-mdx-editor__secondary-button,.rich-mdx-editor__primary-button,.rich-mdx-editor__danger-button{border:1px solid #aebdc6;border-radius:5px;background:#fff;color:#253744;cursor:pointer;font:inherit;font-size:13px;line-height:1.2;padding:6px 8px}.rich-mdx-editor__toolbar button:hover,.rich-mdx-editor__toolbar button.is-active,.rich-mdx-editor__toolbar select:hover,.rich-mdx-editor__secondary-button:hover{background:#eef5f8}.rich-mdx-editor__toolbar button.is-active{border-color:#3978a7;color:#145d94}.rich-mdx-editor__toolbar select{max-width:120px}.rich-mdx-editor__icon-button{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:700;min-width:31px}.rich-mdx-editor__primary-button{background:#195f8f;border-color:#195f8f;color:#fff}.rich-mdx-editor__primary-button:hover{background:#124d77}.rich-mdx-editor__danger-button{border-color:#d6a1a1;color:#a43030}.rich-mdx-editor__danger-button:hover{background:#fff0f0}.rich-mdx-editor__canvas{min-height:480px;padding:22px 28px}.rich-mdx-editor__canvas:focus{outline:none}.rich-mdx-editor__canvas>*:first-child{margin-top:0}.rich-mdx-editor__canvas h1,.rich-mdx-editor__canvas h2,.rich-mdx-editor__canvas h3,.rich-mdx-editor__canvas h4{color:#132b3a;line-height:1.3;margin:1.45em 0 .55em}.rich-mdx-editor__canvas h1{font-size:2em}.rich-mdx-editor__canvas h2{font-size:1.55em}.rich-mdx-editor__canvas h3{font-size:1.27em}.rich-mdx-editor__canvas p,.rich-mdx-editor__canvas ul,.rich-mdx-editor__canvas ol{font-size:15px;line-height:1.8;margin:.8em 0}.rich-mdx-editor__canvas ul,.rich-mdx-editor__canvas ol{padding-left:1.75em}.rich-mdx-editor__canvas li>p{margin:.2em 0}.rich-mdx-editor__canvas blockquote{border-left:4px solid #91afbe;color:#4c6471;margin:1em 0;padding:.25em 0 .25em 1em}.rich-mdx-editor__canvas code{background:#edf2f4;border-radius:3px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;padding:1px 4px}.rich-mdx-editor__canvas pre{background:#182832;border-radius:7px;color:#edf6f8;margin:1em 0;overflow:auto;padding:14px}.rich-mdx-editor__canvas pre code{background:transparent;color:inherit;padding:0}.rich-mdx-editor__canvas hr{border:0;border-top:1px solid #d8e1e6;margin:1.8em 0}.rich-mdx-editor__canvas a{color:#146a9e;text-decoration:underline}.rich-mdx-editor__canvas table{border-collapse:collapse;margin:1em 0;max-width:100%;overflow:auto}.rich-mdx-editor__canvas td,.rich-mdx-editor__canvas th{border:1px solid #cfdbe1;min-width:86px;padding:7px 9px;vertical-align:top}.rich-mdx-editor__canvas th{background:#f1f6f8;font-weight:700}.rich-mdx-editor__canvas .selectedCell:after{background:rgba(69,135,177,.12)}
+    .rich-mdx-editor__callout{border-left:4px solid #4b83b4;border-radius:7px;background:#eef6fd;margin:1em 0;padding:0 15px 12px}.rich-mdx-editor__callout[data-type="tip"]{border-left-color:#23866b;background:#edf9f4}.rich-mdx-editor__callout[data-type="warning"]{border-left-color:#b67617;background:#fff8e8}.rich-mdx-editor__callout[data-type="danger"]{border-left-color:#c64d4d;background:#fff0f0}.rich-mdx-editor__callout-header{align-items:center;border-bottom:1px solid rgba(68,104,126,.14);display:flex;gap:9px;margin-bottom:8px;padding:8px 0}.rich-mdx-editor__callout-kind{border:0;background:transparent;color:#233d4e;font-size:13px;font-weight:700;padding:2px}.rich-mdx-editor__callout-description{color:#6b7d87;font-size:12px}.rich-mdx-editor__callout-content>*:last-child{margin-bottom:0}
+    .rich-mdx-editor__figure{border:1px solid #d7e0e4;border-radius:8px;margin:1.2em 0;padding:12px}.rich-mdx-editor__figure-image{border-radius:5px;display:block;height:auto;max-height:460px;max-width:100%;margin:0 auto}.rich-mdx-editor__figure-empty{align-items:center;background:#f5f8f9;border:1px dashed #b8c8cf;color:#647580;display:flex;justify-content:center;min-height:160px}.rich-mdx-editor__figure-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.rich-mdx-editor__figure-controls input{border:1px solid #bac8cf;border-radius:5px;flex:1 1 180px;font:inherit;font-size:13px;padding:7px 8px}
+    .rich-mdx-editor__mermaid{border:1px solid #cad8df;border-radius:8px;background:#fbfdfe;margin:1.2em 0;overflow:hidden;padding:12px;position:relative}.rich-mdx-editor__special-header{align-items:baseline;display:flex;gap:9px;margin-bottom:9px}.rich-mdx-editor__special-header strong{color:#244353;font-size:14px}.rich-mdx-editor__special-header span{color:#70818b;font-size:12px}.rich-mdx-editor__mermaid-grid{display:grid;gap:10px;grid-template-columns:minmax(190px,.85fr) minmax(240px,1.15fr)}.rich-mdx-editor__mermaid-source{background:#172731;border:0;border-radius:5px;color:#e8f3f5;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:150px;padding:10px;resize:vertical}.rich-mdx-editor__mermaid-preview{align-items:center;background:#fff;border:1px solid #dce5e8;border-radius:5px;display:flex;justify-content:center;min-height:150px;overflow:auto;padding:8px}.rich-mdx-editor__mermaid-preview svg{max-width:100%}.rich-mdx-editor__empty-diagram,.rich-mdx-editor__diagram-error{color:#6b7a84;font-size:13px}.rich-mdx-editor__diagram-error{color:#a33434}.rich-mdx-editor__special-delete{margin-top:9px}
+    .rich-mdx-editor__raw-mdx{align-items:center;background:#f6f8fa;border:1px dashed #aebdc6;border-radius:7px;display:flex;flex-wrap:wrap;gap:8px;margin:1em 0;padding:10px}.rich-mdx-editor__raw-mdx-text{color:#4c6070;flex:1 1 250px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rich-mdx-editor__slash-menu{background:#fff;border:1px solid #c9d5db;border-radius:8px;box-shadow:0 12px 28px rgba(24,52,68,.17);max-height:320px;min-width:275px;overflow:auto;padding:5px;z-index:1000}.rich-mdx-editor__slash-item{align-items:center;background:transparent;border:0;border-radius:5px;color:#243944;cursor:pointer;display:flex;gap:9px;padding:7px;text-align:left;width:100%}.rich-mdx-editor__slash-item:hover,.rich-mdx-editor__slash-item.is-active{background:#edf5f8}.rich-mdx-editor__slash-icon{align-items:center;background:#e7f0f4;border-radius:4px;color:#276a95;display:flex;font-weight:700;height:27px;justify-content:center;width:27px}.rich-mdx-editor__slash-item strong,.rich-mdx-editor__slash-item small{display:block}.rich-mdx-editor__slash-item small{color:#71818a;font-size:11px;margin-top:2px}.rich-mdx-editor__slash-empty{color:#71818a;font-size:13px;padding:9px}.rich-mdx-editor__dialog-overlay{align-items:center;background:rgba(15,30,40,.38);display:flex;inset:0;justify-content:center;padding:20px;position:fixed;z-index:1200}.rich-mdx-editor__dialog{background:#fff;border-radius:10px;box-shadow:0 16px 42px rgba(10,27,39,.3);max-width:760px;padding:20px;width:min(760px,100%)}.rich-mdx-editor__dialog h3{margin:0 0 7px}.rich-mdx-editor__dialog p{color:#5e707b;font-size:13px;line-height:1.55}.rich-mdx-editor__dialog textarea{box-sizing:border-box;border:1px solid #aebdc6;border-radius:6px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:260px;padding:10px;width:100%}.rich-mdx-editor__dialog-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}@media(max-width:760px){.rich-mdx-editor__canvas{padding:16px}.rich-mdx-editor__mermaid-grid{grid-template-columns:1fr}.rich-mdx-editor__toolbar-group{border-right:0}.rich-mdx-editor__toolbar{position:static}}
+  `;
+  document.head.append(style);
+}
+
+class MdxRichEditor {
+  constructor({ element, value = "", onChange, onAddAsset, getAsset }) {
+    injectStyles();
+    this.element = element;
+    this.onChange = onChange;
+    this.onAddAsset = onAddAsset;
+    this.getAsset = getAsset;
+    this.lastValue = String(value || "");
+    this.toolbar = document.createElement("div");
+    this.toolbar.className = "rich-mdx-editor__toolbar";
+    this.canvas = document.createElement("div");
+    this.canvas.className = "rich-mdx-editor__canvas";
+    this.canvas.setAttribute("aria-label", "文章正文编辑器");
+    const shell = document.createElement("section");
+    shell.className = "rich-mdx-editor";
+    shell.append(this.toolbar, this.canvas);
+    element.replaceChildren(shell);
+
+    const visualContext = {
+      getAsset: (src) => this.getAsset?.(src),
+      stageImage: (file, replace) => this.stageImage(file, replace),
+    };
+    const slashItems = this.slashItems();
+    this.editor = new Editor({
+      element: this.canvas,
+      extensions: [
+        StarterKit.configure({ link: false }),
+        Link.configure({ autolink: true, defaultProtocol: "https", openOnClick: false }),
+        Image.configure({ allowBase64: false }),
+        Placeholder.configure({ placeholder: "输入 / 插入一个内容块，或直接开始写作…" }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Callout,
+        Figure.configure({ context: visualContext }),
+        Mermaid,
+        RawMdx,
+        createSlashMenu(slashItems),
+      ],
+      content: this.toEditorHtml(this.lastValue),
+      editorProps: {
+        attributes: { class: "rich-mdx-editor__canvas" },
+        handlePaste: (_view, event) => {
+          const image = getPastedImage(event);
+          if (!image) return false;
+          event.preventDefault();
+          this.stageImage(image);
+          return true;
+        },
+      },
+      onUpdate: () => this.emitValue(),
+    });
+    this.renderToolbar();
+  }
+
+  toEditorHtml(value) {
+    return mdxToEditorHtml(value, (html) => {
+      if (!window.DOMPurify?.sanitize) return html;
+      return window.DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    });
+  }
+
+  stageImage(file, replace) {
+    if (!file.type.startsWith("image/")) {
+      window.alert("只能插入图片文件。");
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      window.alert("图片不能超过 10 MB。");
+      return;
+    }
+    if (typeof this.onAddAsset !== "function") {
+      window.alert("图片暂存功能尚未就绪，请刷新页面后重试。");
+      return;
+    }
+    const name = filenameFor(file);
+    const src = `${PUBLIC_FOLDER}/${name}`;
+    this.onAddAsset({ file, name, path: `${MEDIA_FOLDER}/${name}` });
+    if (replace) {
+      replace(src);
+    } else {
+      this.editor
+        .chain()
+        .focus()
+        .insertContent({ type: "figure", attrs: { src, alt: "粘贴的图片", caption: "" } })
+        .run();
+    }
+  }
+
+  emitValue() {
+    const value = editorJsonToMdx(this.editor.getJSON());
+    this.lastValue = value;
+    this.onChange?.(value);
+  }
+
+  updateValue(value) {
+    const nextValue = String(value || "");
+    if (nextValue === this.lastValue) return;
+    this.lastValue = nextValue;
+    this.editor.commands.setContent(this.toEditorHtml(nextValue), { emitUpdate: false });
+  }
+
+  slashItems() {
+    const insert =
+      (content) =>
+      ({ editor, range }) =>
+        insertBlock(editor, range, content);
+    return [
+      {
+        label: "一级标题",
+        keywords: "heading h1 标题",
+        icon: "H1",
+        description: "文章主标题",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.setHeading({ level: 1 })),
+      },
+      {
+        label: "二级标题",
+        keywords: "heading h2 标题",
+        icon: "H2",
+        description: "章节标题",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.setHeading({ level: 2 })),
+      },
+      {
+        label: "项目列表",
+        keywords: "bullet list 列表",
+        icon: "•",
+        description: "无序列表",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.toggleBulletList()),
+      },
+      {
+        label: "编号列表",
+        keywords: "ordered list 数字",
+        icon: "1.",
+        description: "有序列表",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.toggleOrderedList()),
+      },
+      {
+        label: "引用",
+        keywords: "quote 引用",
+        icon: "❝",
+        description: "突出引用内容",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.toggleBlockquote()),
+      },
+      {
+        label: "代码块",
+        keywords: "code 编程",
+        icon: "</>",
+        description: "插入代码片段",
+        command: ({ editor, range }) =>
+          insertBlock(editor, range, null, (chain) => chain.toggleCodeBlock()),
+      },
+      {
+        label: "Callout 备注",
+        keywords: "callout note 备注 提示",
+        icon: "i",
+        description: "带颜色的说明块",
+        command: insert({
+          type: "callout",
+          attrs: { type: "note" },
+          content: [{ type: "paragraph" }],
+        }),
+      },
+      {
+        label: "Callout 注意",
+        keywords: "callout warning 注意",
+        icon: "!",
+        description: "需要特别关注的提示",
+        command: insert({
+          type: "callout",
+          attrs: { type: "warning" },
+          content: [{ type: "paragraph" }],
+        }),
+      },
+      {
+        label: "Mermaid 图表",
+        keywords: "mermaid diagram 流程图",
+        icon: "◇",
+        description: "插入实时渲染的图表",
+        command: insert({
+          type: "mermaid",
+          attrs: { chart: "flowchart TD\n  A[开始] --> B[结束]" },
+        }),
+      },
+      {
+        label: "分隔线",
+        keywords: "divider horizontal rule 分割",
+        icon: "—",
+        description: "分隔内容区域",
+        command: insert({ type: "horizontalRule" }),
+      },
+      {
+        label: "表格",
+        keywords: "table 表格",
+        icon: "▦",
+        description: "插入 3 × 3 表格",
+        command: ({ editor, range }) => {
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run();
+        },
+      },
+    ];
+  }
+
+  addToolbarGroup(...children) {
+    const group = document.createElement("div");
+    group.className = "rich-mdx-editor__toolbar-group";
+    children.forEach((child) => group.append(child));
+    this.toolbar.append(group);
+  }
+
+  toolbarButton(label, title, action, active) {
+    const button = createIconButton(label, title);
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", () => action());
+    this.editor.on("selectionUpdate", () =>
+      button.classList.toggle("is-active", Boolean(active?.())),
+    );
+    this.editor.on("transaction", () => button.classList.toggle("is-active", Boolean(active?.())));
+    return button;
+  }
+
+  renderToolbar() {
+    const heading = document.createElement("select");
+    heading.setAttribute("aria-label", "文本类型");
+    [
+      ["paragraph", "正文"],
+      ["1", "标题 1"],
+      ["2", "标题 2"],
+      ["3", "标题 3"],
+    ].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      heading.append(option);
+    });
+    heading.addEventListener("change", () => {
+      const level = Number(heading.value);
+      if (level) this.editor.chain().focus().setHeading({ level }).run();
+      else this.editor.chain().focus().setParagraph().run();
+    });
+    this.editor.on("selectionUpdate", () => {
+      const active = [1, 2, 3].find((level) => this.editor.isActive("heading", { level }));
+      heading.value = active ? String(active) : "paragraph";
+    });
+    this.addToolbarGroup(heading);
+
+    this.addToolbarGroup(
+      this.toolbarButton(
+        "B",
+        "加粗",
+        () => this.editor.chain().focus().toggleBold().run(),
+        () => this.editor.isActive("bold"),
+      ),
+      this.toolbarButton(
+        "I",
+        "斜体",
+        () => this.editor.chain().focus().toggleItalic().run(),
+        () => this.editor.isActive("italic"),
+      ),
+      this.toolbarButton(
+        "</>",
+        "行内代码",
+        () => this.editor.chain().focus().toggleCode().run(),
+        () => this.editor.isActive("code"),
+      ),
+      this.toolbarButton(
+        "↗",
+        "插入链接",
+        () => {
+          const href = window.prompt("链接地址");
+          if (href) this.editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+        },
+        () => this.editor.isActive("link"),
+      ),
+    );
+    this.addToolbarGroup(
+      this.toolbarButton(
+        "•",
+        "项目列表",
+        () => this.editor.chain().focus().toggleBulletList().run(),
+        () => this.editor.isActive("bulletList"),
+      ),
+      this.toolbarButton(
+        "1.",
+        "编号列表",
+        () => this.editor.chain().focus().toggleOrderedList().run(),
+        () => this.editor.isActive("orderedList"),
+      ),
+      this.toolbarButton(
+        "❝",
+        "引用",
+        () => this.editor.chain().focus().toggleBlockquote().run(),
+        () => this.editor.isActive("blockquote"),
+      ),
+      this.toolbarButton(
+        "{ }",
+        "代码块",
+        () => this.editor.chain().focus().toggleCodeBlock().run(),
+        () => this.editor.isActive("codeBlock"),
+      ),
+    );
+
+    const callout = createButton("＋ Callout", "rich-mdx-editor__secondary-button");
+    callout.addEventListener("click", () => this.insertCallout("note"));
+    const diagram = createButton("◇ Mermaid", "rich-mdx-editor__secondary-button");
+    diagram.addEventListener("click", () => this.insertMermaid());
+    const table = createButton("▦ 表格", "rich-mdx-editor__secondary-button");
+    table.addEventListener("click", () =>
+      this.editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    );
+    const image = createButton("▧ 图片", "rich-mdx-editor__secondary-button");
+    const imageInput = document.createElement("input");
+    imageInput.type = "file";
+    imageInput.accept = "image/png,image/jpeg,image/gif,image/webp";
+    imageInput.hidden = true;
+    image.addEventListener("click", () => imageInput.click());
+    imageInput.addEventListener("change", () => {
+      const [file] = imageInput.files || [];
+      if (file) this.stageImage(file);
+      imageInput.value = "";
+    });
+    this.addToolbarGroup(callout, diagram, table, image, imageInput);
+  }
+
+  insertCallout(type) {
+    this.editor
+      .chain()
+      .focus()
+      .insertContent({ type: "callout", attrs: { type }, content: [{ type: "paragraph" }] })
+      .run();
+  }
+
+  insertMermaid() {
+    this.editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "mermaid",
+        attrs: {
+          chart:
+            "flowchart TD\n  A[开始] --> B{满足条件吗？}\n  B -- 是 --> C[继续]\n  B -- 否 --> D[结束]",
+        },
+      })
+      .run();
+  }
+
+  destroy() {
+    this.editor?.destroy();
+    this.element.replaceChildren();
+  }
+}
+
+window.MdxRichEditor = MdxRichEditor;
