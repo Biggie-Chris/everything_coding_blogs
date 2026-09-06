@@ -13,7 +13,14 @@
     </style>
   </head>
   <body>
+    <script>
+      // 自定义正文控件必须在 Decap 读取 config.yml 前注册。
+      window.CMS_MANUAL_INIT = true;
+    </script>
     <script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js"></script>
     <script src="./paste-image.js"></script>
+    <script>
+      window.CMS.init();
+    </script>
   </body>
 </html>
