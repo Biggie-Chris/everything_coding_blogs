@@ -55,7 +55,13 @@ function callbackPage(
     <script>
       const message = ${scriptJson(message)};
       const targetOrigin = ${scriptJson(env.CMS_ORIGIN)};
-      window.opener?.postMessage(message, targetOrigin);
+      const receiveMessage = (event) => {
+        if (event.origin !== targetOrigin) return;
+        window.opener?.postMessage(message, targetOrigin);
+        window.removeEventListener("message", receiveMessage);
+      };
+      window.addEventListener("message", receiveMessage);
+      window.opener?.postMessage("authorizing:github", targetOrigin);
     </script>
   </body>
 </html>`;
