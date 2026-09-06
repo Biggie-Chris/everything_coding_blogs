@@ -17,7 +17,10 @@
   var MEDIA_FOLDER = "src/content/blog/uploads";
   var PUBLIC_FOLDER = "../uploads";
   var MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js";
+  var MARKED_CDN = "https://cdn.jsdelivr.net/npm/marked@16.4.2/lib/marked.umd.js";
+  var DOMPURIFY_CDN = "https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js";
   var mermaidLoader;
+  var markdownRendererLoader;
   var mermaidId = 0;
   var MIME_EXTENSIONS = {
     "image/gif": "gif",
@@ -97,6 +100,17 @@
       ".mdx-paste-control__preview-title{background:#f4f7f8;border-bottom:1px solid #d5dde2;color:#33454f;font-size:13px;font-weight:600;margin:0;padding:9px 12px}",
       ".mdx-paste-control__preview-body{background:#fff;padding:16px}",
       ".mdx-paste-control__text{color:#33454f;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}",
+      ".mdx-paste-control__markdown{color:#253743;font-size:14px;line-height:1.75}",
+      ".mdx-paste-control__markdown h1,.mdx-paste-control__markdown h2,.mdx-paste-control__markdown h3{color:#1b2b34;line-height:1.3;margin:24px 0 12px}",
+      ".mdx-paste-control__markdown h1{font-size:24px}.mdx-paste-control__markdown h2{font-size:20px}.mdx-paste-control__markdown h3{font-size:17px}",
+      ".mdx-paste-control__markdown p,.mdx-paste-control__markdown ul,.mdx-paste-control__markdown ol{margin:12px 0}",
+      ".mdx-paste-control__markdown li+li{margin-top:4px}",
+      ".mdx-paste-control__markdown pre{background:#17232b;border-radius:5px;color:#e8f0f2;overflow:auto;padding:12px}",
+      ".mdx-paste-control__markdown code{background:#edf2f4;border-radius:3px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;padding:1px 4px}",
+      ".mdx-paste-control__markdown pre code{background:transparent;padding:0}",
+      ".mdx-paste-control__markdown blockquote{border-left:3px solid #89a7b7;color:#50636e;margin:12px 0;padding-left:12px}",
+      ".mdx-paste-control__markdown table{border-collapse:collapse;display:block;max-width:100%;overflow:auto}",
+      ".mdx-paste-control__markdown td,.mdx-paste-control__markdown th{border:1px solid #d5dde2;padding:6px 8px;text-align:left}",
       ".mdx-paste-control__callout{border-left:4px solid #4a78a8;border-radius:4px;background:#edf4fb;margin:12px 0;padding:12px 14px}",
       ".mdx-paste-control__callout--tip{border-left-color:#27866c;background:#edf8f4}",
       ".mdx-paste-control__callout--warning{border-left-color:#b7791f;background:#fff8e6}",
@@ -111,6 +125,39 @@
       ".mdx-paste-control__mermaid-error{color:#9b2c2c;font-size:13px;text-align:left}",
     ].join("");
     document.head.appendChild(style);
+  }
+
+  function loadExternalScript(source, isReady) {
+    if (isReady()) return Promise.resolve();
+
+    return new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = source;
+      script.async = true;
+      script.onload = function () {
+        if (isReady()) resolve();
+        else reject(new Error("Preview dependency loaded without an API."));
+      };
+      script.onerror = function () {
+        reject(new Error("Unable to load preview dependency."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  function loadMarkdownRenderer() {
+    if (window.marked && window.DOMPurify) return Promise.resolve();
+    if (markdownRendererLoader) return markdownRendererLoader;
+
+    markdownRendererLoader = Promise.all([
+      loadExternalScript(MARKED_CDN, function () {
+        return Boolean(window.marked && window.marked.parse);
+      }),
+      loadExternalScript(DOMPURIFY_CDN, function () {
+        return Boolean(window.DOMPurify && window.DOMPurify.sanitize);
+      }),
+    ]);
+    return markdownRendererLoader;
   }
 
   function loadMermaid() {
@@ -157,10 +204,11 @@
 
   var MdxPasteControl = CMS.createClass({
     getInitialState: function getInitialState() {
-      return { previewVisible: true };
+      return { markdownPreviewReady: false, previewVisible: true };
     },
     componentDidMount: function componentDidMount() {
       injectStyles();
+      this.loadMarkdownPreview();
       this.scheduleMermaidPreview();
     },
     componentDidUpdate: function componentDidUpdate() {
@@ -173,6 +221,17 @@
           renderMermaidPreview,
         );
       }, 0);
+    },
+    loadMarkdownPreview: function loadMarkdownPreview() {
+      var control = this;
+      loadMarkdownRenderer()
+        .then(function () {
+          control.setState({ markdownPreviewReady: true });
+        })
+        .catch(function () {
+          // 保留安全的原文回退；网络问题不应影响正文编辑或发布。
+          control.setState({ markdownPreviewReady: false });
+        });
     },
     handleChange: function handleChange(event) {
       this.props.onChange(event.target.value);
@@ -244,6 +303,36 @@
       this.setState({ previewVisible: !this.state.previewVisible });
     },
 
+    renderMarkdownPreview: function renderMarkdownPreview(source, key) {
+      var withoutImports = source.replace(
+        /^import\s+[A-Za-z_$][\w$]*\s+from\s+["'][^"']+["'];?\s*$/gm,
+        "",
+      );
+
+      if (!this.state.markdownPreviewReady) {
+        return CMS.h(
+          "div",
+          { className: "mdx-paste-control__text", key: key },
+          withoutImports || "正在加载 Markdown 预览…",
+        );
+      }
+
+      var renderedHtml = window.marked.parse(withoutImports, {
+        breaks: false,
+        gfm: true,
+      });
+      var safeHtml = window.DOMPurify.sanitize(renderedHtml, {
+        FORBID_ATTR: ["style"],
+        USE_PROFILES: { html: true },
+      });
+
+      return CMS.h("div", {
+        className: "mdx-paste-control__markdown",
+        dangerouslySetInnerHTML: { __html: safeHtml },
+        key: key,
+      });
+    },
+
     renderFigurePreview: function renderFigurePreview(attributes, key) {
       var source = getMdxProp(attributes, "src");
       var alt = getMdxProp(attributes, "alt") || "图片";
@@ -275,13 +364,7 @@
       while ((match = expression.exec(value))) {
         var textBefore = value.slice(previousIndex, match.index).trim();
         if (textBefore) {
-          blocks.push(
-            CMS.h(
-              "div",
-              { className: "mdx-paste-control__text", key: "text-" + blockNumber },
-              textBefore,
-            ),
-          );
+          blocks.push(this.renderMarkdownPreview(textBefore, "text-" + blockNumber));
           blockNumber += 1;
         }
         if (typeof match[2] === "string") {
@@ -303,7 +386,7 @@
                 CMS.h(
                   "div",
                   { className: "mdx-paste-control__callout-content", key: "content" },
-                  match[2].trim(),
+                  this.renderMarkdownPreview(match[2].trim(), "content"),
                 ),
               ],
             ),
@@ -330,10 +413,9 @@
       var remainingText = value.slice(previousIndex).trim();
       if (remainingText || blocks.length === 0) {
         blocks.push(
-          CMS.h(
-            "div",
-            { className: "mdx-paste-control__text", key: "remaining" },
+          this.renderMarkdownPreview(
             remainingText || "开始写作后，这里会显示受支持组件的预览。",
+            "remaining",
           ),
         );
       }
