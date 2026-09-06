@@ -18,13 +18,11 @@ cover:
   src: rdma-stack.svg
   alt: "11"
 ---
-
-import Callout from "@components/post/Callout.astro";
 import Figure from "@components/post/Figure.astro";
 
-## 什么是 RDMA
+import Callout from "@components/post/Callout.astro";
 
-![粘贴的图片](/everything_coding_blogs/uploads/pasted-20260906054031899.png)
+## 什么是 RDMA
 
 - **低延迟**：通常端到端延迟在 1-3 微秒范围内
 - **低 CPU 开销**：数据传输不需要 CPU 参与拷贝
@@ -35,7 +33,10 @@ RDMA 通过 **RNIC（RDMA-capable NIC）** 硬件实现，常见实现包括：
 - RoCE（RDMA over Converged Ethernet）
 - iWARP
 
-![RDMA 协议栈层次结构](./rdma-stack.svg)
+<Figure
+  src="./rdma-stack.svg"
+  alt="RDMA 协议栈层次结构"
+/>
 
 ## Verbs API
 
@@ -47,6 +48,7 @@ Verbs 是 RDMA 编程的标准接口，类似于套接字 API。核心 verbs 可
 struct ibv_context *ibv_open_device(struct ibv_device *device);
 int ibv_close_device(struct ibv_context *context);
 int ibv_query_device(struct ibv_context *context, struct ibv_device_attr *attr);
+
 ```
 
 ### Protection Domain
@@ -56,6 +58,7 @@ Protection Domain（PD）是 RDMA 资源隔离的基本单位。一个 PD 内的
 ```c
 struct ibv_pd *ibv_alloc_pd(struct ibv_context *context);
 int ibv_dealloc_pd(struct ibv_pd *pd);
+
 ```
 
 ### Memory Region
@@ -70,13 +73,11 @@ Memory Region（MR）用于向 RNIC 注册一块内存区域，确保：
 struct ibv_mr *ibv_reg_mr(struct ibv_pd *pd, void *addr,
                           size_t length, int access);
 int ibv_dereg_mr(struct ibv_mr *mr);
+
 ```
 
-![粘贴的图片](/everything_coding_blogs/uploads/pasted-20260906053946666.png)
-
-<Callout type="tip">
-  RDMA 的零拷贝依赖于 Memory Region 的预注册。注册 MR 是一个代价较高的操作（需要 pin
-  住物理页面），应当尽可能复用已注册的 MR。
+<Callout type="note">
+RDMA 的零拷贝依赖于 Memory Region 的预注册。注册 MR 是一个代价较高的操作（需要 pin 住物理页面），应当尽可能复用已注册的 MR。
 </Callout>
 
 ### Completion Queue
@@ -88,6 +89,7 @@ struct ibv_cq *ibv_create_cq(struct ibv_context *ctx, int cqe,
                               void *cq_context,
                               struct ibv_comp_channel *channel,
                               int comp_vector);
+
 ```
 
 ### Queue Pair
@@ -102,11 +104,12 @@ struct ibv_qp *ibv_create_qp(struct ibv_pd *pd,
                               struct ibv_qp_init_attr *qp_init_attr);
 int ibv_modify_qp(struct ibv_qp *qp, struct ibv_qp_attr *attr,
                    int attr_mask);
+
 ```
 
 QP 的状态机如下：
 
-```text title="QP 状态转移 (terminal)"
+```text
 RESET ──► INIT ──► RTR ──► RTS
                     ▲        │
                     └────────┘
@@ -115,6 +118,7 @@ RESET ──► INIT ──► RTR ──► RTS
 INIT:  端口信息已配置
 RTR:   Ready to Receive
 RTS:   Ready to Send (可进行数据传输)
+
 ```
 
 <Figure
@@ -135,15 +139,14 @@ RTS:   Ready to Send (可进行数据传输)
 6. RNIC 在发送方和接收方的 CQ 中各生成一个 Work Completion
 
 <Callout type="note">
-  RDMA WRITE 和 RDMA READ 属于单边操作（one-sided），只需要远端预先注册好 MR 并提供 rkey，不需要远端
-  CPU 参与数据路径。
+RDMA WRITE 和 RDMA READ 属于单边操作（one-sided），只需要远端预先注册好 MR 并提供 rkey，不需要远端 CPU 参与数据路径。
 </Callout>
 
 ## 基础示例程序
 
 以下代码展示了创建一个基本 QP 所需的步骤：
 
-```c title="rdma_setup.c" {4-8, 14-18}
+```c
 #include <infiniband/verbs.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -171,16 +174,15 @@ static struct ibv_context *setup_rdma(const char *dev_name) {
 
     return ctx;
 }
+
 ```
 
-<Callout type="warning">
-  创建完 QP 后，必须通过 `ibv_modify_qp` 将状态从 RESET 逐步迁移到 RTS
-  才能进行数据传输。跳过状态转换会导致 `ibv_post_send()` 失败。
+<Callout type="note">
+创建完 QP 后，必须通过 `ibv_modify_qp` 将状态从 RESET 逐步迁移到 RTS 才能进行数据传输。跳过状态转换会导致 `ibv_post_send()` 失败。
 </Callout>
 
-<Callout type="danger">
-  忘记 deregister MR 或 dealloc PD 会导致内存泄漏和 RNIC 资源耗尽。请在生产代码中始终使用 RAII
-  风格或 `goto cleanup` 模式确保资源释放。
+<Callout type="note">
+忘记 deregister MR 或 dealloc PD 会导致内存泄漏和 RNIC 资源耗尽。请在生产代码中始终使用 RAII 风格或 `goto cleanup` 模式确保资源释放。
 </Callout>
 
 ## 总结
