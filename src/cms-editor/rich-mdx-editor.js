@@ -42,6 +42,8 @@ const CODE_LANGUAGES = [
 ];
 const SUPPORTED_CODE_LANGUAGES = new Set(CODE_LANGUAGES.map(([language]) => language));
 const lowlight = createLowlight(common);
+const MIN_FIGURE_WIDTH = 20;
+const MAX_FIGURE_WIDTH = 100;
 let mermaidRenderId = 0;
 
 function escapeHtml(value) {
@@ -72,6 +74,13 @@ function deleteNode(editor, getPos, node) {
   const position = nodePosition(getPos);
   if (position === null) return;
   editor.view.dispatch(editor.state.tr.delete(position, position + node.nodeSize));
+}
+
+function normalizeFigureWidth(value) {
+  if (value === "" || value === null || value === undefined) return MAX_FIGURE_WIDTH;
+  const width = Number(value);
+  if (!Number.isFinite(width)) return MAX_FIGURE_WIDTH;
+  return Math.min(MAX_FIGURE_WIDTH, Math.max(MIN_FIGURE_WIDTH, Math.round(width)));
 }
 
 function createButton(label, className = "") {
@@ -204,47 +213,57 @@ function createFigureNodeView(context) {
     wrapper.contentEditable = "false";
     const image = document.createElement("img");
     image.className = "rich-mdx-editor__figure-image";
-    const empty = document.createElement("div");
-    empty.className = "rich-mdx-editor__figure-empty";
-    empty.textContent = "选择图片，或直接粘贴图片到正文中";
-    const controls = document.createElement("div");
-    controls.className = "rich-mdx-editor__figure-controls";
-    const altInput = document.createElement("input");
-    altInput.placeholder = "替代文字（无障碍说明）";
-    altInput.setAttribute("aria-label", "图片替代文字");
-    const captionInput = document.createElement("input");
-    captionInput.placeholder = "图片说明（可选）";
-    captionInput.setAttribute("aria-label", "图片说明");
-    const changeButton = createButton("更换图片", "rich-mdx-editor__secondary-button");
-    const removeButton = createButton("删除", "rich-mdx-editor__danger-button");
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/png,image/jpeg,image/gif,image/webp";
-    fileInput.hidden = true;
-    controls.append(altInput, captionInput, changeButton, removeButton, fileInput);
-    wrapper.append(image, empty, controls);
+    image.draggable = false;
+    const resizeHandle = createButton("", "rich-mdx-editor__figure-resize");
+    resizeHandle.setAttribute("aria-label", "调整图片宽度");
+    resizeHandle.title = "拖动以调整图片宽度";
+    resizeHandle.draggable = false;
+    wrapper.append(image, resizeHandle);
 
     const update = (attributes) => updateNodeAttributes(editor, getPos, currentNode, attributes);
     const refresh = (updatedNode) => {
-      const { src = "", alt = "", caption = "" } = updatedNode.attrs;
+      const { src = "", alt = "" } = updatedNode.attrs;
       const resolved = context.getAsset?.(src) || src;
       image.src = resolved;
       image.alt = alt || "图片";
-      image.hidden = !src;
-      empty.hidden = Boolean(src);
-      if (document.activeElement !== altInput) altInput.value = alt;
-      if (document.activeElement !== captionInput) captionInput.value = caption;
+      const width = normalizeFigureWidth(updatedNode.attrs.width);
+      wrapper.style.width = `${width}%`;
+      wrapper.dataset.width = String(width);
     };
     refresh(node);
 
-    altInput.addEventListener("input", () => update({ alt: altInput.value }));
-    captionInput.addEventListener("input", () => update({ caption: captionInput.value }));
-    changeButton.addEventListener("click", () => fileInput.click());
-    removeButton.addEventListener("click", () => deleteNode(editor, getPos, currentNode));
-    fileInput.addEventListener("change", () => {
-      const [file] = fileInput.files || [];
-      if (file) context.stageImage(file, (src) => update({ src }));
-      fileInput.value = "";
+    image.addEventListener("click", () => {
+      wrapper.classList.add("is-selected");
+    });
+    resizeHandle.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const difference = event.key === "ArrowLeft" ? -5 : 5;
+      update({
+        width: normalizeFigureWidth(normalizeFigureWidth(currentNode.attrs.width) + difference),
+      });
+    });
+    resizeHandle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startWidth = normalizeFigureWidth(currentNode.attrs.width);
+      const parentWidth = wrapper.parentElement?.getBoundingClientRect().width || 0;
+      const liveWidth = (clientX) =>
+        normalizeFigureWidth(startWidth + ((clientX - startX) / parentWidth) * 100);
+      const move = (moveEvent) => {
+        if (!parentWidth) return;
+        const width = liveWidth(moveEvent.clientX);
+        wrapper.style.width = `${width}%`;
+        wrapper.dataset.width = String(width);
+      };
+      const finish = (finishEvent) => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", finish);
+        if (parentWidth) update({ width: liveWidth(finishEvent.clientX) });
+      };
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", finish, { once: true });
     });
 
     return {
@@ -493,6 +512,7 @@ const Figure = Node.create({
       src: { default: "" },
       alt: { default: "" },
       caption: { default: "" },
+      width: { default: MAX_FIGURE_WIDTH },
     };
   },
   parseHTML() {
@@ -503,6 +523,7 @@ const Figure = Node.create({
           src: __private__.decodeAttribute(element.getAttribute("data-src")),
           alt: __private__.decodeAttribute(element.getAttribute("data-alt")),
           caption: __private__.decodeAttribute(element.getAttribute("data-caption")),
+          width: __private__.decodeAttribute(element.getAttribute("data-width")),
         }),
       },
     ];
@@ -670,11 +691,11 @@ function injectStyles() {
     .rich-mdx-editor{border:1px solid #ccd6dc;border-radius:10px;background:#fff;color:#1f2933;box-shadow:0 1px 2px rgba(15,23,42,.03);overflow:hidden}
     .rich-mdx-editor__hint{color:#637381;font-size:13px;line-height:1.6;margin:0 0 10px}.rich-mdx-editor__toolbar{align-items:center;background:#fbfcfd;border-bottom:1px solid #dce4e8;display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;position:sticky;top:0;z-index:3}.rich-mdx-editor__toolbar-group{align-items:center;border-right:1px solid #dce4e8;display:flex;gap:4px;padding-right:7px}.rich-mdx-editor__toolbar-group:last-child{border-right:0}.rich-mdx-editor__toolbar button,.rich-mdx-editor__toolbar select,.rich-mdx-editor__secondary-button,.rich-mdx-editor__primary-button,.rich-mdx-editor__danger-button{border:1px solid #aebdc6;border-radius:5px;background:#fff;color:#253744;cursor:pointer;font:inherit;font-size:13px;line-height:1.2;padding:6px 8px}.rich-mdx-editor__toolbar button:hover,.rich-mdx-editor__toolbar button.is-active,.rich-mdx-editor__toolbar select:hover,.rich-mdx-editor__secondary-button:hover{background:#eef5f8}.rich-mdx-editor__toolbar button.is-active{border-color:#3978a7;color:#145d94}.rich-mdx-editor__toolbar select{max-width:120px}.rich-mdx-editor__icon-button{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:700;min-width:31px}.rich-mdx-editor__primary-button{background:#195f8f;border-color:#195f8f;color:#fff}.rich-mdx-editor__primary-button:hover{background:#124d77}.rich-mdx-editor__danger-button{border-color:#d6a1a1;color:#a43030}.rich-mdx-editor__danger-button:hover{background:#fff0f0}.rich-mdx-editor__canvas{min-height:480px;padding:22px 28px}.rich-mdx-editor__canvas:focus{outline:none}.rich-mdx-editor__canvas>*:first-child{margin-top:0}.rich-mdx-editor__canvas h1,.rich-mdx-editor__canvas h2,.rich-mdx-editor__canvas h3,.rich-mdx-editor__canvas h4{color:#132b3a;line-height:1.3;margin:1.45em 0 .55em}.rich-mdx-editor__canvas h1{font-size:2em}.rich-mdx-editor__canvas h2{font-size:1.55em}.rich-mdx-editor__canvas h3{font-size:1.27em}.rich-mdx-editor__canvas p,.rich-mdx-editor__canvas ul,.rich-mdx-editor__canvas ol{font-size:15px;line-height:1.8;margin:.8em 0}.rich-mdx-editor__canvas ul,.rich-mdx-editor__canvas ol{padding-left:1.75em}.rich-mdx-editor__canvas li>p{margin:.2em 0}.rich-mdx-editor__canvas blockquote{border-left:4px solid #91afbe;color:#4c6471;margin:1em 0;padding:.25em 0 .25em 1em}.rich-mdx-editor__canvas code{background:#edf2f4;border-radius:3px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;padding:1px 4px}.rich-mdx-editor__canvas pre{background:#182832;border-radius:7px;color:#edf6f8;margin:1em 0;overflow:auto;padding:14px}.rich-mdx-editor__canvas pre code{background:transparent;color:inherit;padding:0}.rich-mdx-editor__canvas hr{border:0;border-top:1px solid #d8e1e6;margin:1.8em 0}.rich-mdx-editor__canvas a{color:#146a9e;text-decoration:underline}.rich-mdx-editor__canvas table{border-collapse:collapse;margin:1em 0;max-width:100%;overflow:auto}.rich-mdx-editor__canvas td,.rich-mdx-editor__canvas th{border:1px solid #cfdbe1;min-width:86px;padding:7px 9px;vertical-align:top}.rich-mdx-editor__canvas th{background:#f1f6f8;font-weight:700}.rich-mdx-editor__canvas .selectedCell:after{background:rgba(69,135,177,.12)}
     .rich-mdx-editor__callout{border-left:4px solid #4b83b4;border-radius:7px;background:#eef6fd;margin:1em 0;padding:0 15px 12px}.rich-mdx-editor__callout[data-type="tip"]{border-left-color:#23866b;background:#edf9f4}.rich-mdx-editor__callout[data-type="warning"]{border-left-color:#b67617;background:#fff8e8}.rich-mdx-editor__callout[data-type="danger"]{border-left-color:#c64d4d;background:#fff0f0}.rich-mdx-editor__callout-header{align-items:center;border-bottom:1px solid rgba(68,104,126,.14);display:flex;gap:9px;margin-bottom:8px;padding:8px 0}.rich-mdx-editor__callout-kind{border:0;background:transparent;color:#233d4e;font-size:13px;font-weight:700;padding:2px}.rich-mdx-editor__callout-description{color:#6b7d87;font-size:12px}.rich-mdx-editor__callout-content>*:last-child{margin-bottom:0}
-    .rich-mdx-editor__figure{border:1px solid #d7e0e4;border-radius:8px;margin:1.2em 0;padding:12px}.rich-mdx-editor__figure-image{border-radius:5px;display:block;height:auto;max-height:460px;max-width:100%;margin:0 auto}.rich-mdx-editor__figure-empty{align-items:center;background:#f5f8f9;border:1px dashed #b8c8cf;color:#647580;display:flex;justify-content:center;min-height:160px}.rich-mdx-editor__figure-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.rich-mdx-editor__figure-controls input{border:1px solid #bac8cf;border-radius:5px;flex:1 1 180px;font:inherit;font-size:13px;padding:7px 8px}
     .rich-mdx-editor__mermaid{border:1px solid #cad8df;border-radius:8px;background:#fbfdfe;margin:1.2em 0;overflow:hidden;padding:12px;position:relative}.rich-mdx-editor__special-header{align-items:baseline;display:flex;gap:9px;margin-bottom:9px}.rich-mdx-editor__special-header strong{color:#244353;font-size:14px}.rich-mdx-editor__special-header span{color:#70818b;font-size:12px}.rich-mdx-editor__mermaid-grid{display:grid;gap:10px;grid-template-columns:minmax(190px,.85fr) minmax(240px,1.15fr)}.rich-mdx-editor__mermaid-source{background:#172731;border:0;border-radius:5px;color:#e8f3f5;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:150px;padding:10px;resize:vertical}.rich-mdx-editor__mermaid-preview{align-items:center;background:#fff;border:1px solid #dce5e8;border-radius:5px;display:flex;justify-content:center;min-height:150px;overflow:auto;padding:8px}.rich-mdx-editor__mermaid-preview svg{max-width:100%}.rich-mdx-editor__empty-diagram,.rich-mdx-editor__diagram-error{color:#6b7a84;font-size:13px}.rich-mdx-editor__diagram-error{color:#a33434}.rich-mdx-editor__special-delete{margin-top:9px}
     .rich-mdx-editor__raw-mdx{align-items:center;background:#f6f8fa;border:1px dashed #aebdc6;border-radius:7px;display:flex;flex-wrap:wrap;gap:8px;margin:1em 0;padding:10px}.rich-mdx-editor__raw-mdx-text{color:#4c6070;flex:1 1 250px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rich-mdx-editor__slash-menu{background:#fff;border:1px solid #c9d5db;border-radius:8px;box-shadow:0 12px 28px rgba(24,52,68,.17);max-height:320px;min-width:275px;overflow:auto;padding:5px;z-index:1000}.rich-mdx-editor__slash-item{align-items:center;background:transparent;border:0;border-radius:5px;color:#243944;cursor:pointer;display:flex;gap:9px;padding:7px;text-align:left;width:100%}.rich-mdx-editor__slash-item:hover,.rich-mdx-editor__slash-item.is-active{background:#edf5f8}.rich-mdx-editor__slash-icon{align-items:center;background:#e7f0f4;border-radius:4px;color:#276a95;display:flex;font-weight:700;height:27px;justify-content:center;width:27px}.rich-mdx-editor__slash-item strong,.rich-mdx-editor__slash-item small{display:block}.rich-mdx-editor__slash-item small{color:#71818a;font-size:11px;margin-top:2px}.rich-mdx-editor__slash-empty{color:#71818a;font-size:13px;padding:9px}.rich-mdx-editor__dialog-overlay{align-items:center;background:rgba(15,30,40,.38);display:flex;inset:0;justify-content:center;padding:20px;position:fixed;z-index:1200}.rich-mdx-editor__dialog{background:#fff;border-radius:10px;box-shadow:0 16px 42px rgba(10,27,39,.3);max-width:760px;padding:20px;width:min(760px,100%)}.rich-mdx-editor__dialog h3{margin:0 0 7px}.rich-mdx-editor__dialog p{color:#5e707b;font-size:13px;line-height:1.55}.rich-mdx-editor__dialog textarea{box-sizing:border-box;border:1px solid #aebdc6;border-radius:6px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:260px;padding:10px;width:100%}.rich-mdx-editor__dialog-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}@media(max-width:760px){.rich-mdx-editor__canvas{padding:16px}.rich-mdx-editor__mermaid-grid{grid-template-columns:1fr}.rich-mdx-editor__toolbar-group{border-right:0}.rich-mdx-editor__toolbar{position:static}}
     .rich-mdx-editor__code-block{border:1px solid #223741;border-radius:8px;background:#182832;color:#edf6f8;margin:1.1em 0;overflow:hidden}.rich-mdx-editor__code-block-header{align-items:center;background:#223741;display:flex;gap:9px;padding:7px 10px}.rich-mdx-editor__code-block-header strong{font-size:13px}.rich-mdx-editor__code-block-header span{color:#abc0c8;font-size:12px}.rich-mdx-editor__code-language{margin-left:auto;border:1px solid #526a74;border-radius:4px;background:#172731;color:#edf6f8;font:12px ui-monospace,SFMono-Regular,Consolas,monospace;padding:4px 6px}.rich-mdx-editor__code-pre{border-radius:0!important;margin:0!important;min-height:52px;padding:14px!important}.rich-mdx-editor__code-pre code{display:block;min-height:24px;outline:none;white-space:pre}.rich-mdx-editor__code-block .hljs-comment,.rich-mdx-editor__code-block .hljs-quote{color:#90a6ad}.rich-mdx-editor__code-block .hljs-keyword,.rich-mdx-editor__code-block .hljs-selector-tag,.rich-mdx-editor__code-block .hljs-literal{color:#fc9f7d}.rich-mdx-editor__code-block .hljs-string,.rich-mdx-editor__code-block .hljs-attr,.rich-mdx-editor__code-block .hljs-template-variable{color:#b8da88}.rich-mdx-editor__code-block .hljs-number,.rich-mdx-editor__code-block .hljs-symbol,.rich-mdx-editor__code-block .hljs-bullet{color:#d6b5f0}.rich-mdx-editor__code-block .hljs-title,.rich-mdx-editor__code-block .hljs-function,.rich-mdx-editor__code-block .hljs-type{color:#7fcff2}.rich-mdx-editor__code-block .hljs-built_in,.rich-mdx-editor__code-block .hljs-variable{color:#f0c67c}
     .rich-mdx-editor-shell{margin:12px 0 20px;max-width:100%}.rich-mdx-editor-shell>.rich-mdx-editor__hint{border:1px solid #dce7ed;border-radius:10px;background:#f6fafc;color:#55707d;margin:0 0 10px;padding:9px 12px}.rich-mdx-editor{border:1px solid #dfe7eb;border-radius:14px;background:#fff;box-shadow:0 18px 46px rgba(25,53,70,.09);overflow:visible}.rich-mdx-editor__status{align-items:center;background:linear-gradient(90deg,#f8fbfd,#f2f8fb);border-bottom:1px solid #e4ebef;color:#6b7e88;display:flex;font-size:12px;letter-spacing:.01em;padding:9px 18px}.rich-mdx-editor__status:before{background:#46a578;border-radius:999px;content:"";height:7px;margin-right:7px;width:7px}.rich-mdx-editor__toolbar{background:rgba(255,255,255,.96);border-bottom:1px solid #e5ebee;box-shadow:none;gap:7px;padding:9px 14px;top:8px}.rich-mdx-editor__toolbar-group{gap:5px;padding-right:9px}.rich-mdx-editor__toolbar button,.rich-mdx-editor__toolbar select,.rich-mdx-editor__secondary-button{border-color:transparent;border-radius:7px}.rich-mdx-editor__toolbar button:hover,.rich-mdx-editor__toolbar button.is-active,.rich-mdx-editor__toolbar select:hover,.rich-mdx-editor__secondary-button:hover{background:#eaf3f7;border-color:#d9e8ef}.rich-mdx-editor__canvas{box-sizing:border-box;max-width:900px;min-height:620px;margin:0 auto;padding:40px 74px 80px}.rich-mdx-editor__canvas h1{font-size:2.35em;letter-spacing:-.035em}.rich-mdx-editor__canvas h2{font-size:1.65em;letter-spacing:-.02em}.rich-mdx-editor__canvas p,.rich-mdx-editor__canvas ul,.rich-mdx-editor__canvas ol{font-size:16px;line-height:1.86}.rich-mdx-editor__canvas p.is-editor-empty:first-child:before{color:#a4b2ba;font-style:normal}.rich-mdx-editor__bubble-menu{align-items:center;background:#172934;border:1px solid rgba(255,255,255,.12);border-radius:9px;box-shadow:0 12px 26px rgba(11,29,39,.28);display:flex;gap:2px;padding:4px;z-index:50}.rich-mdx-editor__bubble-button{border:0!important;border-radius:6px!important;background:transparent!important;color:#f7fbfc!important;cursor:pointer;font:600 13px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;min-width:30px;padding:6px!important}.rich-mdx-editor__bubble-button:hover,.rich-mdx-editor__bubble-button.is-active{background:#315364!important}.rich-mdx-editor__drag-handle{align-items:center;display:flex;gap:2px;opacity:0;transition:opacity .14s ease}.rich-mdx-editor__drag-handle:hover,.rich-mdx-editor__drag-handle:focus-within{opacity:1}.rich-mdx-editor__drag-grip,.rich-mdx-editor__block-add{align-items:center;border:0;border-radius:5px;background:transparent;color:#738994;cursor:grab;display:flex;font:700 17px/1 ui-sans-serif,system-ui;padding:3px 5px}.rich-mdx-editor__drag-grip:hover,.rich-mdx-editor__block-add:hover{background:#e8f1f5;color:#215f7e}.rich-mdx-editor__block-add{cursor:pointer;font-size:19px;font-weight:400}.rich-mdx-editor__block-menu{box-sizing:border-box;background:#fff;border:1px solid #d8e3e8;border-radius:12px;box-shadow:0 16px 38px rgba(28,55,70,.2);max-height:min(460px,calc(100vh - 24px));overflow:auto;padding:8px;position:fixed;width:310px;z-index:9999}.rich-mdx-editor__block-menu-heading{border-bottom:1px solid #edf1f3;color:#6e818b;display:flex;flex-direction:column;font-size:12px;gap:2px;padding:7px 8px 10px}.rich-mdx-editor__block-menu-heading strong{color:#1e3948;font-size:13px}.rich-mdx-editor__block-actions{display:grid;gap:2px;padding-top:5px}.rich-mdx-editor__block-action{align-items:center;border:0!important;border-radius:8px!important;background:transparent!important;color:#27404d!important;cursor:pointer;display:flex;gap:9px;padding:7px!important;text-align:left;width:100%}.rich-mdx-editor__block-action:hover{background:#edf5f8!important}.rich-mdx-editor__block-action-icon{align-items:center;background:#edf4f7;border:1px solid #deebf0;border-radius:6px;color:#286889;display:flex;font:700 12px/1 ui-monospace,SFMono-Regular,Consolas,monospace;height:30px;justify-content:center;width:30px}.rich-mdx-editor__block-action strong,.rich-mdx-editor__block-action small{display:block}.rich-mdx-editor__block-action strong{font-size:13px}.rich-mdx-editor__block-action small{color:#71848e;font-size:11px;margin-top:2px}.rich-mdx-editor__code-block{box-shadow:0 7px 16px rgba(20,40,50,.15)}@media(max-width:760px){.rich-mdx-editor__canvas{min-height:480px;padding:25px 18px 54px}.rich-mdx-editor__status{padding:8px 12px}.rich-mdx-editor__toolbar{padding:8px}.rich-mdx-editor__block-menu{left:12px!important;right:12px;width:auto}.rich-mdx-editor__drag-handle{opacity:1}}
+    .rich-mdx-editor__figure{border:0!important;background:transparent!important;border-radius:0!important;line-height:0;margin:1.35em auto!important;max-width:100%;padding:0!important;position:relative}.rich-mdx-editor__figure-image{border:0;border-radius:8px;cursor:default;display:block;height:auto;max-height:none;max-width:100%;width:100%}.rich-mdx-editor__figure.is-selected .rich-mdx-editor__figure-image,.rich-mdx-editor__figure:hover .rich-mdx-editor__figure-image{box-shadow:0 0 0 2px #8cc4de}.rich-mdx-editor__figure-resize{border:2px solid #fff!important;border-radius:50%!important;background:#27749b!important;bottom:-7px;cursor:nwse-resize;height:14px;opacity:0;padding:0!important;position:absolute;right:-7px;transition:opacity .14s ease;width:14px;z-index:2}.rich-mdx-editor__figure:hover .rich-mdx-editor__figure-resize,.rich-mdx-editor__figure.is-selected .rich-mdx-editor__figure-resize,.rich-mdx-editor__figure-resize:focus-visible{opacity:1}.rich-mdx-editor__figure-resize:focus-visible{outline:2px solid #155b82;outline-offset:2px}
   `;
   document.head.append(style);
 }

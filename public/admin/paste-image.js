@@ -39,7 +39,7 @@
         CMS.h(
           "p",
           { className: "rich-mdx-editor__hint", key: "hint" },
-          "直接在正文中编辑；输入 / 可插入不同内容块。粘贴或选择图片后，图片会与文章一起提交。",
+          "直接粘贴图片即可插入；悬停图片并拖动右下角圆点可调整宽度。图片会在 Publish 时与文章一起提交。",
         ),
         CMS.h("div", { id: this.props.forID + "-rich-editor", key: "editor" }),
       ]);

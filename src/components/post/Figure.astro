@@ -3,22 +3,25 @@ export interface Props {
   src: string;
   alt: string;
   caption?: string;
-  width?: number;
+  width?: number | string;
   height?: number;
 }
 
 const { src, alt, caption, width, height } = Astro.props;
+const normalizedWidth = Math.min(100, Math.max(20, Number(width) || 100));
 ---
 
-<figure class="figure">
-  <img src={src} alt={alt} loading="lazy" width={width} height={height} />
+<figure class="figure" style={`--figure-width: ${normalizedWidth}%`}>
+  <img src={src} alt={alt} loading="lazy" height={height} />
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
 <style>
   .figure {
     margin: var(--space-8) auto;
+    max-width: 100%;
     text-align: center;
+    width: var(--figure-width);
   }
 
   .figure img {

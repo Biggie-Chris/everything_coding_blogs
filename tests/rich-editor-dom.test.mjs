@@ -58,6 +58,9 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   assert.ok(document.querySelector(".rich-mdx-editor__drag-handle"));
   assert.ok(document.querySelector(".rich-mdx-editor__callout"));
   assert.ok(document.querySelector(".rich-mdx-editor__figure"));
+  assert.equal(document.querySelector(".rich-mdx-editor__figure-controls"), null);
+  assert.equal(document.querySelector(".rich-mdx-editor__figure-empty"), null);
+  assert.ok(document.querySelector(".rich-mdx-editor__figure-resize"));
   const language = Array.from(document.querySelectorAll(".rich-mdx-editor__code-language")).at(-1);
   assert.equal(language?.value, "c");
   assert.ok(document.querySelector(".rich-mdx-editor__code-block span[class*='hljs-']"));
@@ -79,6 +82,8 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   assert.equal(assets.length, 1);
   assert.match(assets[0].path, /^public\/uploads\/pasted-\d+\.png$/);
   assert.match(values.at(-1), /src="\/everything_coding_blogs\/uploads\/pasted-\d+\.png"/);
+  const pastedFigure = Array.from(document.querySelectorAll(".rich-mdx-editor__figure")).at(-1);
+  assert.equal(pastedFigure.style.width, "100%");
   language.value = "python";
   language.dispatchEvent(new window.Event("change", { bubbles: true }));
   assert.match(values.at(-1), /```python/);

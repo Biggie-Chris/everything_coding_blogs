@@ -24,6 +24,11 @@ test("现有 Markdown / MDX 会转换为可视化块，同时保留未知 JSX", 
   const markdownImage = mdxToEditorHtml('![网络拓扑](../uploads/topology.png "图片说明")');
   assert.match(markdownImage, /data-mdx-figure="true"/);
   assert.match(markdownImage, /data-src="\.\.%2Fuploads%2Ftopology\.png"/);
+
+  const resizedFigure = mdxToEditorHtml(
+    '<Figure src="/uploads/diagram.png" alt="图" width="64" />',
+  );
+  assert.match(resizedFigure, /data-width="64"/);
 });
 
 test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径", () => {
@@ -53,6 +58,7 @@ test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径",
         attrs: {
           src: "/everything_coding_blogs/uploads/pasted-example.png",
           alt: "上传图片",
+          width: 68,
           caption: "粘贴后随文章提交",
         },
       },
@@ -67,6 +73,7 @@ test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径",
   assert.match(output, /<Callout type="warning">/);
   assert.match(output, /```c\nint main\(void\) \{ return 0; \}\n```/);
   assert.match(output, /<Figure\n  src="\/everything_coding_blogs\/uploads\/pasted-example\.png"/);
+  assert.match(output, /  width="68"/);
   assert.match(output, /<Mermaid chart=\{`flowchart LR/);
   assert.match(output, /<Demo enabled=\{true\} \/>/);
   assert.doesNotMatch(output, /\.\.\/uploads\/pasted-/);

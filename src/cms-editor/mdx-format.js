@@ -61,8 +61,8 @@ function rawBlockHtml(source) {
   return `<div data-mdx-raw="true" data-source="${encodeAttribute(source)}"></div>`;
 }
 
-function figureBlockHtml({ src, alt, caption = "" }) {
-  return `<figure data-mdx-figure="true" data-src="${encodeAttribute(src)}" data-alt="${encodeAttribute(alt)}" data-caption="${encodeAttribute(caption)}"></figure>`;
+function figureBlockHtml({ src, alt, caption = "", width = "" }) {
+  return `<figure data-mdx-figure="true" data-src="${encodeAttribute(src)}" data-alt="${encodeAttribute(alt)}" data-caption="${encodeAttribute(caption)}" data-width="${encodeAttribute(width)}"></figure>`;
 }
 
 function replaceUnknownMdx(source) {
@@ -109,6 +109,7 @@ export function mdxToEditorHtml(source, sanitize = (html) => html) {
           src: getMdxProp(match[3], "src"),
           alt: getMdxProp(match[3], "alt"),
           caption: getMdxProp(match[3], "caption"),
+          width: getMdxProp(match[3], "width"),
         }),
       );
     } else {
@@ -226,10 +227,12 @@ function serializeNode(node, context) {
       const src = node.attrs?.src || "";
       const alt = node.attrs?.alt || "图片说明";
       const caption = node.attrs?.caption || "";
+      const width = Number(node.attrs?.width || 100);
       return [
         "<Figure",
         `  src="${src.replaceAll('"', "&quot;")}"`,
         `  alt="${alt.replaceAll('"', "&quot;")}"`,
+        width < 100 ? `  width="${Math.max(20, Math.round(width))}"` : "",
         caption ? `  caption="${caption.replaceAll('"', "&quot;")}"` : "",
         "/>",
       ]
