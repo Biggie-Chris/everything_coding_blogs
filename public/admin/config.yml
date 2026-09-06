@@ -109,4 +109,4 @@ collections:
       - label: 正文
         name: body
         widget: mdx_paste
-        hint: 支持 Markdown / GFM / MDX。可直接粘贴图片，图片会随本次 Publish 一起提交。
+        hint: 支持 Markdown / GFM / MDX。工具栏可插入 Callout、Figure 与 Mermaid；可直接粘贴图片并随 Publish 一起提交。

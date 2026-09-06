@@ -88,7 +88,7 @@ Schema 位于 `src/content.config.ts`。约束：
 2. 创建 `index.mdx`。
 3. 填写 frontmatter (参考模板)。
 4. 图片放在同目录，使用相对路径引用。
-5. MDX 文章可以导入 Callout/Figure 组件。
+5. MDX 文章可以导入 Callout/Figure/Mermaid 组件；Mermaid 图表通过 chart 属性提供，生产页面以 strict 安全级别在客户端渲染。
 
 文章统一使用 `.mdx`，这样 CMS 可以在一个文章集合中管理所有内容。没有组件的普通 Markdown 正文同样是合法 MDX；仅在需要自定义组件时再添加 import 与组件标签。
 

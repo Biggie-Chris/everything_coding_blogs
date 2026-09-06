@@ -201,9 +201,9 @@ $ echo "终端风格"
 
 ### 启用 Mermaid
 
-1. 安装 `mermaid` 和对应的 Astro 集成。
-2. `src/config/features.ts` 中设置 `mermaid: true`。
-3. 仅在需要 Mermaid 的页面加载脚本，避免全局 bundle。
+Mermaid 已启用，并且仅会在文章实际引入 Mermaid 组件时加载。CMS 写作页提供“插入 Mermaid”按钮，会自动补齐组件 import、插入可编辑流程图模板，并显示图表预览。线上渲染使用 Mermaid 的 strict 安全级别；若图表语法错误，会退回显示源代码，文章仍可正常打开。
+
+在 MDX 正文中引入 `@components/post/Mermaid.astro`，并传入 `chart` 属性即可。CMS 的“插入 Mermaid”按钮会自动生成这一结构。
 
 ## Lint 和格式化
 

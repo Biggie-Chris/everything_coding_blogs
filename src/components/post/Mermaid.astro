@@ -1,0 +1,87 @@
+---
+export interface Props {
+  chart: string;
+  caption?: string;
+}
+
+const { chart, caption } = Astro.props;
+---
+
+<figure class="mermaid-diagram">
+  <div class="mermaid-diagram__canvas" data-mermaid-source={chart}>
+    <pre class="mermaid-diagram__fallback"><code>{chart}</code></pre>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<script>
+  import mermaid from "mermaid";
+
+  const sourceNodes = document.querySelectorAll<HTMLElement>(
+    ".mermaid-diagram__canvas:not([data-mermaid-ready])",
+  );
+
+  if (sourceNodes.length > 0) {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "neutral",
+    });
+
+    sourceNodes.forEach((node) => {
+      const source = node.dataset.mermaidSource;
+      if (!source) return;
+
+      node.dataset.mermaidReady = "true";
+      node.classList.add("mermaid");
+      node.textContent = source;
+    });
+
+    mermaid.run({ nodes: Array.from(sourceNodes) }).catch(() => {
+      sourceNodes.forEach((node) => {
+        const source = node.dataset.mermaidSource;
+        if (!source) return;
+
+        node.classList.remove("mermaid");
+        node.innerHTML = "";
+        const fallback = document.createElement("pre");
+        fallback.className = "mermaid-diagram__fallback";
+        fallback.textContent = source;
+        node.appendChild(fallback);
+      });
+    });
+  }
+</script>
+
+<style>
+  .mermaid-diagram {
+    margin: var(--space-8) auto;
+    overflow-x: auto;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    text-align: center;
+  }
+
+  .mermaid-diagram__canvas :global(svg) {
+    display: block;
+    height: auto;
+    margin: 0 auto;
+    max-width: 100%;
+  }
+
+  .mermaid-diagram__fallback {
+    margin: 0;
+    overflow-x: auto;
+    text-align: left;
+    white-space: pre;
+  }
+
+  .mermaid-diagram figcaption {
+    margin-top: var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+  }
+</style>

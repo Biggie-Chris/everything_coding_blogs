@@ -6,7 +6,7 @@ export const features = {
   readingProgress: true,
   comments: false,
   analytics: false,
-  mermaid: false,
+  mermaid: true,
 } as const;
 
 export type Features = typeof features;
