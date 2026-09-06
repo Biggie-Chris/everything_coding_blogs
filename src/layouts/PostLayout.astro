@@ -64,11 +64,6 @@ const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 
       {post.data.tags.length > 0 && <PostTags tags={post.data.tags} />}
 
-      {
-        series && position && (
-          <PostSeries series={series} currentSlug={post.id} position={position} />
-        )
-      }
     </header>
 
     <div class="post-content prose">

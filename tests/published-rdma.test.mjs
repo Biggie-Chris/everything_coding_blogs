@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-test("RDMA 文章是公开内容，并为列表页提供公共封面", async () => {
-  const articlePath = resolve(repositoryRoot, "src/content/blog/rdma-verbs-introduction/index.mdx");
+test("现有公开文章可携带与文章目录同级的图片资源", async () => {
+  const articlePath = resolve(repositoryRoot, "src/content/blog/understanding-epoll/index.mdx");
   const [article] = await Promise.all([
     readFile(articlePath, "utf8"),
-    stat(resolve(repositoryRoot, "public/uploads/rdma-stack.svg")),
+    stat(resolve(repositoryRoot, "src/content/blog/understanding-epoll/epoll-architecture.svg")),
   ]);
 
   assert.match(article, /^draft: false$/m);
-  assert.match(article, /^  src: \/everything_coding_blogs\/uploads\/rdma-stack\.svg$/m);
+  assert.match(article, /!\[epoll 内部架构\]\(\.\/epoll-architecture\.svg\)/);
 });

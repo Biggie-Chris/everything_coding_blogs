@@ -24,6 +24,7 @@ const { posts, emptyMessage = "暂无文章" } = Astro.props;
 
 <style>
   .post-grid {
+    align-items: start;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-6);
