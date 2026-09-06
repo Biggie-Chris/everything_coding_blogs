@@ -87,11 +87,11 @@ export const site = {
 
 ## 创建文章
 
-在 `src/content/blog/` 下创建新目录，放入 `index.md` 或 `index.mdx`：
+在 `src/content/blog/` 下创建新目录，放入 `index.mdx`：
 
 ```text
 src/content/blog/my-new-post/
-├── index.md
+├── index.mdx
 └── architecture.svg
 ```
 
@@ -130,8 +130,9 @@ cover: # 可选
 Decap CMS：用获授权的 GitHub 账号登录后，可创建、编辑和删除文章；点击 **Publish** 会将文章以
 Markdown 直接提交到 `main` 分支，现有 GitHub Actions 随即构建并发布主页、文章页、RSS 和搜索索引。
 
-文章仍保存在 `src/content/blog/<slug>/index.md`，因此在线编辑器与本地写作完全共用同一套
-frontmatter、Markdown / GFM 语法和 Astro 构建流程。图片会保存到
+文章统一保存在 `src/content/blog/<slug>/index.mdx`，因此在线编辑器与本地写作完全共用同一套
+frontmatter、Markdown / GFM / MDX 语法和 Astro 构建流程。普通 Markdown 正文无需额外修改；仅在需要
+Astro 组件时再写入 MDX 的 import 与组件标签。图片会保存到
 `src/content/blog/uploads/`，在正文中以相对路径引用。
 
 ### 首次启用登录

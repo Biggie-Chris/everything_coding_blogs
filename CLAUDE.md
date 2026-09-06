@@ -79,18 +79,18 @@ Schema 位于 `src/content.config.ts`。约束：
 
 每篇文章使用目录名作为稳定 ID。例如：
 
-- `src/content/blog/understanding-epoll/index.md` → slug: `understanding-epoll`
+- `src/content/blog/understanding-epoll/index.mdx` → slug: `understanding-epoll`
 - URL: `/posts/understanding-epoll/`
 
 ## 新增文章
 
 1. 在 `src/content/blog/` 下创建新目录 (目录名 = slug)。
-2. 创建 `index.md` 或 `index.mdx`。
+2. 创建 `index.mdx`。
 3. 填写 frontmatter (参考模板)。
 4. 图片放在同目录，使用相对路径引用。
 5. MDX 文章可以导入 Callout/Figure 组件。
 
-默认使用 `.md`；仅在需要自定义组件时使用 `.mdx`。
+文章统一使用 `.mdx`，这样 CMS 可以在一个文章集合中管理所有内容。没有组件的普通 Markdown 正文同样是合法 MDX；仅在需要自定义组件时再添加 import 与组件标签。
 
 ## 新增页面
 

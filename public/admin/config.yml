@@ -25,11 +25,15 @@ collections:
     label_singular: 文章
     folder: src/content/blog
     create: true
-    extension: md
+    # 统一使用 MDX：普通 Markdown 是合法 MDX，含 Astro 组件的文章也能在同一列表编辑。
+    extension: mdx
     format: frontmatter
     path: "{{slug}}/index"
     slug: "{{slug}}"
     preview_path: "posts/{{slug}}"
+    editor:
+      # MDX 中的 Astro 组件无法在 Decap 预览区执行，保留原始文本编辑体验。
+      preview: false
     fields:
       - label: 标题
         name: title
