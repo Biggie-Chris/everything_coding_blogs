@@ -223,7 +223,7 @@ function createFigureNodeView(context) {
     const update = (attributes) => updateNodeAttributes(editor, getPos, currentNode, attributes);
     const refresh = (updatedNode) => {
       const { src = "", alt = "" } = updatedNode.attrs;
-      const resolved = context.getAsset?.(src) || src;
+      const resolved = context.resolveImage?.(src) || context.getAsset?.(src) || src;
       image.src = resolved;
       image.alt = alt || "图片";
       const width = normalizeFigureWidth(updatedNode.attrs.width);
@@ -707,6 +707,7 @@ class MdxRichEditor {
     this.onChange = onChange;
     this.onAddAsset = onAddAsset;
     this.getAsset = getAsset;
+    this.localImageUrls = new Map();
     this.lastValue = String(value || "");
     this.status = document.createElement("div");
     this.status.className = "rich-mdx-editor__status";
@@ -727,6 +728,7 @@ class MdxRichEditor {
 
     const visualContext = {
       getAsset: (src) => this.getAsset?.(src),
+      resolveImage: (src) => this.localImageUrls.get(src),
       stageImage: (file, replace) => this.stageImage(file, replace),
     };
     const slashItems = this.slashItems();
@@ -970,6 +972,8 @@ class MdxRichEditor {
     }
     const name = filenameFor(file);
     const src = `${PUBLIC_FOLDER}/${name}`;
+    const previewUrl = window.URL?.createObjectURL?.(file);
+    if (previewUrl) this.localImageUrls.set(src, previewUrl);
     this.onAddAsset({ file, name, path: `${MEDIA_FOLDER}/${name}` });
     if (replace) {
       replace(src);
@@ -1241,6 +1245,8 @@ class MdxRichEditor {
 
   destroy() {
     this.editor?.destroy();
+    this.localImageUrls.forEach((url) => window.URL?.revokeObjectURL?.(url));
+    this.localImageUrls.clear();
     document.removeEventListener("mousedown", this.closeBlockMenu);
     this.blockMenu?.remove();
     this.element.replaceChildren();

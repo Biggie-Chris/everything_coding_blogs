@@ -33,6 +33,16 @@ function installDom() {
       svg: `<svg data-chart="${chart.replaceAll('"', "&quot;")}"></svg>`,
     }),
   };
+  const revokedObjectUrls = [];
+  Object.defineProperty(window.URL, "createObjectURL", {
+    configurable: true,
+    value: () => "blob:https://example.test/pasted-image-preview",
+  });
+  Object.defineProperty(window.URL, "revokeObjectURL", {
+    configurable: true,
+    value: (url) => revokedObjectUrls.push(url),
+  });
+  window.__revokedObjectUrls = revokedObjectUrls;
   return dom;
 }
 
@@ -85,12 +95,22 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   assert.equal(assets.length, 1);
   assert.match(assets[0].path, /^public\/uploads\/pasted-\d+\.png$/);
   assert.match(values.at(-1), /src="\/everything_coding_blogs\/uploads\/pasted-\d+\.png"/);
-  const pastedFigure = Array.from(document.querySelectorAll(".rich-mdx-editor__figure")).at(-1);
+  const pastedFigure = Array.from(document.querySelectorAll(".rich-mdx-editor__figure")).find(
+    (figure) =>
+      figure.querySelector("img")?.getAttribute("src") ===
+      "blob:https://example.test/pasted-image-preview",
+  );
+  assert.ok(pastedFigure, "新粘贴的图片应立即使用本地预览地址显示");
   assert.equal(pastedFigure.style.width, "100%");
+  assert.equal(
+    pastedFigure.querySelector("img")?.getAttribute("src"),
+    "blob:https://example.test/pasted-image-preview",
+  );
   language.value = "python";
   language.dispatchEvent(new window.Event("change", { bubbles: true }));
   assert.match(values.at(-1), /```python/);
   assert.ok(document.querySelector(".rich-mdx-editor__code-block span[class*='hljs-']"));
   editor.destroy();
+  assert.deepEqual(window.__revokedObjectUrls, ["blob:https://example.test/pasted-image-preview"]);
   dom.window.close();
 });
