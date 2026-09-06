@@ -40,7 +40,8 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   const dom = installDom();
   const sourceUrl = pathToFileURL(resolve(repositoryRoot, "src/cms-editor/rich-mdx-editor.js"));
   await import(`${sourceUrl.href}?dom-test=${Date.now()}`);
-  const source = await readFile(resolve(repositoryRoot, "tests/fixtures/cms-preview.mdx"), "utf8");
+  const fixture = await readFile(resolve(repositoryRoot, "tests/fixtures/cms-preview.mdx"), "utf8");
+  const source = `${fixture}\n\n\`\`\`c\nint main(void) { return 0; }\n\`\`\`\n`;
   const values = [];
   const assets = [];
   const editor = new window.MdxRichEditor({
@@ -52,8 +53,14 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   });
 
   assert.ok(document.querySelector(".rich-mdx-editor__canvas.ProseMirror"));
+  assert.match(document.querySelector(".rich-mdx-editor__status")?.textContent || "", /实时编辑中/);
+  assert.ok(document.querySelector(".rich-mdx-editor__bubble-menu"));
+  assert.ok(document.querySelector(".rich-mdx-editor__drag-handle"));
   assert.ok(document.querySelector(".rich-mdx-editor__callout"));
   assert.ok(document.querySelector(".rich-mdx-editor__figure"));
+  const language = Array.from(document.querySelectorAll(".rich-mdx-editor__code-language")).at(-1);
+  assert.equal(language?.value, "c");
+  assert.ok(document.querySelector(".rich-mdx-editor__code-block span[class*='hljs-']"));
   assert.ok(
     document.querySelector(".rich-mdx-editor__mermaid"),
     JSON.stringify(editor.editor.getJSON()),
@@ -61,12 +68,21 @@ test("可视化编辑器会直接挂载 Markdown、Callout、Figure 与 Mermaid 
   assert.equal(document.querySelector(".mdx-paste-control__preview"), null);
   assert.match(editor.editor.getText(), /RDMA/);
 
+  document.querySelector(".rich-mdx-editor__block-add").click();
+  const blockMenu = document.querySelector(".rich-mdx-editor__block-menu");
+  assert.equal(blockMenu.hidden, false);
+  assert.match(blockMenu.textContent, /插入内容块/);
+
   editor.insertCallout("tip");
   assert.match(values.at(-1), /<Callout type="tip">/);
   editor.stageImage(new window.File(["image"], "clipboard.png", { type: "image/png" }));
   assert.equal(assets.length, 1);
   assert.match(assets[0].path, /^public\/uploads\/pasted-\d+\.png$/);
   assert.match(values.at(-1), /src="\/everything_coding_blogs\/uploads\/pasted-\d+\.png"/);
+  language.value = "python";
+  language.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.match(values.at(-1), /```python/);
+  assert.ok(document.querySelector(".rich-mdx-editor__code-block span[class*='hljs-']"));
   editor.destroy();
   dom.window.close();
 });

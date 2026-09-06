@@ -39,6 +39,11 @@ test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径",
         ],
       },
       {
+        type: "codeBlock",
+        attrs: { language: "c" },
+        content: [{ type: "text", text: "int main(void) { return 0; }" }],
+      },
+      {
         type: "callout",
         attrs: { type: "warning" },
         content: [{ type: "paragraph", content: [{ type: "text", text: "请先确认配置。" }] }],
@@ -60,6 +65,7 @@ test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径",
   assert.match(output, /import Figure from "@components\/post\/Figure\.astro";/);
   assert.match(output, /import Mermaid from "@components\/post\/Mermaid\.astro";/);
   assert.match(output, /<Callout type="warning">/);
+  assert.match(output, /```c\nint main\(void\) \{ return 0; \}\n```/);
   assert.match(output, /<Figure\n  src="\/everything_coding_blogs\/uploads\/pasted-example\.png"/);
   assert.match(output, /<Mermaid chart=\{`flowchart LR/);
   assert.match(output, /<Demo enabled=\{true\} \/>/);
