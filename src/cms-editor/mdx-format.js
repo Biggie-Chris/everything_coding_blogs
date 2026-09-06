@@ -12,6 +12,8 @@ const SPECIAL_COMPONENT =
   /<Callout\b([\s\S]*?)>([\s\S]*?)<\/Callout\s*>|<Figure\b([\s\S]*?)\/\s*>|<Mermaid\b([\s\S]*?)\/\s*>/g;
 const UNKNOWN_COMPONENT =
   /<([A-Z][A-Za-z0-9_$]*)\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>[\s\S]*?<\/\1\s*>)/g;
+const STANDALONE_MARKDOWN_IMAGE =
+  /^[ \t]*!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)[ \t]*$/gm;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -59,13 +61,23 @@ function rawBlockHtml(source) {
   return `<div data-mdx-raw="true" data-source="${encodeAttribute(source)}"></div>`;
 }
 
+function figureBlockHtml({ src, alt, caption = "" }) {
+  return `<figure data-mdx-figure="true" data-src="${encodeAttribute(src)}" data-alt="${encodeAttribute(alt)}" data-caption="${encodeAttribute(caption)}"></figure>`;
+}
+
 function replaceUnknownMdx(source) {
   return source.replace(UNKNOWN_COMPONENT, (component) => rawBlockHtml(component));
 }
 
+function replaceStandaloneMarkdownImages(source) {
+  return source.replace(STANDALONE_MARKDOWN_IMAGE, (_image, alt, src, caption) =>
+    figureBlockHtml({ alt, caption, src }),
+  );
+}
+
 function renderMarkdown(source) {
   if (!source.trim()) return "";
-  return marked.parse(replaceUnknownMdx(source), {
+  return marked.parse(replaceUnknownMdx(replaceStandaloneMarkdownImages(source)), {
     breaks: false,
     gfm: true,
   });
@@ -93,7 +105,11 @@ export function mdxToEditorHtml(source, sanitize = (html) => html) {
       );
     } else if (typeof match[3] === "string") {
       parts.push(
-        `<figure data-mdx-figure="true" data-src="${encodeAttribute(getMdxProp(match[3], "src"))}" data-alt="${encodeAttribute(getMdxProp(match[3], "alt"))}" data-caption="${encodeAttribute(getMdxProp(match[3], "caption"))}"></figure>`,
+        figureBlockHtml({
+          src: getMdxProp(match[3], "src"),
+          alt: getMdxProp(match[3], "alt"),
+          caption: getMdxProp(match[3], "caption"),
+        }),
       );
     } else {
       parts.push(

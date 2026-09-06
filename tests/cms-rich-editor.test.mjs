@@ -20,6 +20,10 @@ test("现有 Markdown / MDX 会转换为可视化块，同时保留未知 JSX", 
 
   const unknown = mdxToEditorHtml('import Demo from "./Demo.astro";\n\n<Demo enabled={true} />');
   assert.match(unknown, /data-mdx-raw="true"/);
+
+  const markdownImage = mdxToEditorHtml('![网络拓扑](../uploads/topology.png "图片说明")');
+  assert.match(markdownImage, /data-mdx-figure="true"/);
+  assert.match(markdownImage, /data-src="\.\.%2Fuploads%2Ftopology\.png"/);
 });
 
 test("编辑器序列化会生成 Astro 可发布的 MDX 和公共图片路径", () => {
