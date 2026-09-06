@@ -188,9 +188,9 @@
   max-width: var(--code-width);
 }
 
-/* Prevent selection styling from stacking on top of Expressive Code line highlights */
+/* Keep syntax-token colors while making selected code clearly visible. */
 .prose .expressive-code *::selection {
-  background: transparent;
+  background: var(--color-selection-bg);
   color: inherit;
 }
 
