@@ -3,7 +3,7 @@ backend:
   name: github
   repo: Biggie-Chris/everything_coding_blogs
   branch: main
-  base_url: https://REPLACE_WITH_YOUR_CLOUDFLARE_WORKER.workers.dev
+  base_url: https://everything-coding-cms-auth.biggie-chris.workers.dev
   auth_endpoint: auth
   site_domain: biggie-chris.github.io
 
