@@ -123,6 +123,41 @@ cover: # 可选
 
 图片放在文章同目录，使用相对路径引用。
 
+## 在线写作与发布
+
+部署完成后可打开 `/admin/`（例如
+`https://biggie-chris.github.io/everything_coding_blogs/admin/`）进行在线写作。该页面使用
+Decap CMS：用获授权的 GitHub 账号登录后，可创建、编辑和删除文章；点击 **Publish** 会将文章以
+Markdown 直接提交到 `main` 分支，现有 GitHub Actions 随即构建并发布主页、文章页、RSS 和搜索索引。
+
+文章仍保存在 `src/content/blog/<slug>/index.md`，因此在线编辑器与本地写作完全共用同一套
+frontmatter、Markdown / GFM 语法和 Astro 构建流程。图片会保存到
+`src/content/blog/uploads/`，在正文中以相对路径引用。
+
+### 首次启用登录
+
+GitHub Pages 是纯静态托管，不能安全保存登录密钥；仓库内的
+`cms-oauth-proxy/` 是一个很小的 Cloudflare Worker，只负责 GitHub OAuth 回调。首次启用按以下步骤操作：
+
+1. 将仓库推送到 GitHub 并确认 Pages 部署成功。
+2. 在 Cloudflare 部署 `cms-oauth-proxy/`，记下 Worker 的 HTTPS 地址。
+3. 在 GitHub **Settings → Developer settings → OAuth Apps** 创建 OAuth App：
+   - Homepage URL：Worker 地址
+   - Authorization callback URL：`<Worker 地址>/callback`
+4. 在 Worker 中设置下列机密（不要提交到仓库）：
+
+   ```bash
+   npx wrangler secret put GITHUB_OAUTH_ID
+   npx wrangler secret put GITHUB_OAUTH_SECRET
+   ```
+
+5. 编辑 `public/admin/config.yml`：将 `base_url` 的占位地址替换成 Worker 地址。
+6. 在 `cms-oauth-proxy/wrangler.toml` 中确认 `CMS_ORIGIN` 与站点域名一致，并将
+   `ALLOWED_GITHUB_LOGIN` 设置为允许写作的 GitHub 用户名；随后执行 `npx wrangler deploy`，再提交第 5 步的修改。
+
+登录成功还会由 Worker 校验 GitHub 用户名；即使他人知道 `/admin/` 地址，也不能取得写入令牌。
+若仓库是私有仓库，请将 `GITHUB_REPO_PRIVATE` 设为 `1`，以申请 GitHub 所需的私有仓库权限。
+
 ### 代码块高级标记
 
 ````markdown

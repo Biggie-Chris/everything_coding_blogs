@@ -1,0 +1,108 @@
+# `base_url` 必须替换为你部署的 Cloudflare Worker HTTPS 地址，不能包含末尾斜杠。
+backend:
+  name: github
+  repo: Biggie-Chris/everything_coding_blogs
+  branch: main
+  base_url: https://REPLACE_WITH_YOUR_CLOUDFLARE_WORKER.workers.dev
+  auth_endpoint: auth
+  site_domain: biggie-chris.github.io
+
+# 点击 Publish 后立即提交到 main，由 .github/workflows/deploy.yml 自动发布。
+publish_mode: simple
+
+# 上传图片保留在内容目录；所有文章目录都可以通过 ../uploads/ 相对引用它们。
+media_folder: src/content/blog/uploads
+public_folder: ../uploads
+
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: "-"
+
+collections:
+  - name: blog
+    label: 文章
+    label_singular: 文章
+    folder: src/content/blog
+    create: true
+    extension: md
+    format: frontmatter
+    path: "{{slug}}/index"
+    slug: "{{slug}}"
+    preview_path: "posts/{{slug}}"
+    fields:
+      - label: 标题
+        name: title
+        widget: string
+      - label: 摘要
+        name: description
+        widget: text
+        hint: 用一两句话概括文章内容，用于列表页与 SEO。
+      - label: 发布日期
+        name: pubDate
+        widget: datetime
+        format: YYYY-MM-DD
+        date_format: YYYY-MM-DD
+        time_format: false
+      - label: 更新日期
+        name: updatedDate
+        widget: datetime
+        required: false
+        format: YYYY-MM-DD
+        date_format: YYYY-MM-DD
+        time_format: false
+      - label: 标签
+        name: tags
+        widget: list
+        required: false
+        default: []
+        field:
+          label: 标签
+          name: tag
+          widget: string
+      - label: 分类
+        name: category
+        widget: string
+        required: false
+      - label: 系列
+        name: series
+        widget: string
+        required: false
+      - label: 系列顺序
+        name: seriesOrder
+        widget: number
+        required: false
+        value_type: int
+        min: 1
+        hint: 填写此项时必须同时填写“系列”。
+      - label: 草稿
+        name: draft
+        widget: boolean
+        default: false
+        hint: 草稿不会出现在生产站点。
+      - label: 首页精选
+        name: featured
+        widget: boolean
+        default: false
+      - label: 封面
+        name: cover
+        widget: object
+        required: false
+        fields:
+          - label: 图片
+            name: src
+            widget: image
+          - label: 图片说明
+            name: alt
+            widget: string
+      - label: 原文链接
+        name: canonicalUrl
+        widget: string
+        required: false
+        pattern:
+          - "https?://.+"
+          - 请输入以 http:// 或 https:// 开头的地址。
+      - label: 正文
+        name: body
+        widget: markdown
+        hint: 支持与本地文章相同的 Markdown / GFM 和代码块标记。

@@ -1,0 +1,10 @@
+name = "everything-coding-cms-auth"
+main = "src/index.ts"
+compatibility_date = "2026-09-06"
+
+# 这里的值不是机密。部署后若你的 Pages 域名不同，请一并修改。
+[vars]
+CMS_ORIGIN = "https://biggie-chris.github.io"
+ALLOWED_GITHUB_LOGIN = "Biggie-Chris"
+# 私有仓库改为 "1"，令 OAuth 请求 repo 权限；公开仓库保持 "0"。
+GITHUB_REPO_PRIVATE = "0"
